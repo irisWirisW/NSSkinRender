@@ -52,7 +52,7 @@ import SkinRenderKit
 struct ContentView: View {
     var body: some View {
         VStack {
-            // Basic skin render view with default Alex texture
+            // Basic skin render view with default Steve texture
             SkinRenderView()
                 .frame(width: 400, height: 300)
         }
@@ -220,19 +220,12 @@ public class SceneKitCharacterViewController: NSViewController {
 - [ ] **Animation support** - Character animations and poses
 - [ ] **Custom model variants** - Support for different character model variations
 
-## Example Projects
-
-Examples and usage demonstrations can be found in the documentation and code comments within the package.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
 ## License
 
-This project is available under the MIT License. See the LICENSE file for more info.
+Distributed under the GNU Affero General Public License v3.0 (AGPL-3.0). See the `LICENSE` file for full details.
 
 ## Credits
 
 - Built with Swift and SceneKit
 - Includes default Steve skin texture from Minecraft
+- Assisted by GitHub Copilot for code suggestions and documentation refinement
