@@ -6,6 +6,43 @@
 import Cocoa
 import SceneKit
 
+// MARK: - Player Model Types
+public enum PlayerModel: String, CaseIterable {
+  case steve = "steve"
+  case alex = "alex"
+
+  var displayName: String {
+    switch self {
+    case .steve: return "Steve"
+    case .alex: return "Alex"
+    }
+  }
+
+  // Arm dimensions for each model
+  var armDimensions: (width: CGFloat, height: CGFloat, length: CGFloat) {
+    switch self {
+    case .steve: return (4.0, 12.0, 4.0)
+    case .alex: return (3.0, 12.0, 4.0)
+    }
+  }
+
+  // Arm sleeve dimensions for each model
+  var armSleeveDimensions: (width: CGFloat, height: CGFloat, length: CGFloat) {
+    switch self {
+    case .steve: return (4.5, 12.5, 4.5)
+    case .alex: return (3.5, 12.5, 4.5)
+    }
+  }
+
+  // Arm positions for each model
+  var armPositions: (left: SCNVector3, right: SCNVector3) {
+    switch self {
+    case .steve: return (SCNVector3(6, 6, 0), SCNVector3(-6, 6, 0))
+    case .alex: return (SCNVector3(5.5, 5.75, 0), SCNVector3(-5.5, 5.75, 0))
+    }
+  }
+}
+
 public class SceneKitCharacterViewController: NSViewController {
 
   private var scnView: SCNView!
@@ -14,6 +51,9 @@ public class SceneKitCharacterViewController: NSViewController {
   // Texture file path
   private var texturePath: String?
   private var skinImage: NSImage?
+
+  // Player model type
+  private var playerModel: PlayerModel = .steve
 
   // Character body part nodes
   private var characterGroup: SCNNode!
@@ -34,11 +74,21 @@ public class SceneKitCharacterViewController: NSViewController {
   private var showOuterLayers: Bool = true
   private var toggleButton: NSButton!
 
+  // Model type control
+  private var modelTypeButton: NSButton!
+
   // Convenience initializer
-  public convenience init(texturePath: String) {
+  public convenience init(texturePath: String, playerModel: PlayerModel = .steve) {
     self.init()
     self.texturePath = texturePath
+    self.playerModel = playerModel
     loadTexture()
+  }
+
+  // Convenience initializer with only model type
+  public convenience init(playerModel: PlayerModel) {
+    self.init()
+    self.playerModel = playerModel
   }
 
   public override func loadView() {
@@ -168,6 +218,16 @@ public class SceneKitCharacterViewController: NSViewController {
     toggleButton.autoresizingMask = [.maxXMargin, .maxYMargin]
 
     view.addSubview(toggleButton)
+
+    // Create button to switch model type
+    modelTypeButton = NSButton(frame: NSRect(x: 20, y: 60, width: 130, height: 30))
+    modelTypeButton.title = "Switch to \(playerModel == .steve ? "Alex" : "Steve")"
+    modelTypeButton.bezelStyle = .rounded
+    modelTypeButton.target = self
+    modelTypeButton.action = #selector(switchModelType)
+    modelTypeButton.autoresizingMask = [.maxXMargin, .maxYMargin]
+
+    view.addSubview(modelTypeButton)
   }
 
   @objc private func toggleOuterLayers() {
@@ -185,6 +245,20 @@ public class SceneKitCharacterViewController: NSViewController {
       showOuterLayers ? "Hide Outer Layers" : "Show Outer Layers"
 
     print("Outer layers visibility: \(showOuterLayers ? "shown" : "hidden")")
+  }
+
+  @objc private func switchModelType() {
+    // Switch between Steve and Alex models
+    playerModel = (playerModel == .steve) ? .alex : .steve
+
+    // Update button text
+    modelTypeButton.title = "Switch to \(playerModel == .steve ? "Alex" : "Steve")"
+
+    // Recreate character with new model type
+    characterGroup?.removeFromParentNode()
+    setupCharacter()
+
+    print("Switched to \(playerModel.displayName) model")
   }
 }
 
@@ -277,27 +351,30 @@ extension SceneKitCharacterViewController {
     let armRects: [CGRect]
     let layerName: String
 
+    // Determine arm width based on player model
+    let armWidth: CGFloat = playerModel.armDimensions.width
+
     if isSleeve {
       if isLeft {
         // Left arm sleeve texture coordinates
         armRects = [
-          CGRect(x: 52, y: 52, width: 4, height: 12),  // front
-          CGRect(x: 56, y: 52, width: 4, height: 12),  // right
-          CGRect(x: 60, y: 52, width: 4, height: 12),  // back
+          CGRect(x: 52, y: 52, width: armWidth, height: 12),  // front
+          CGRect(x: 52 + armWidth, y: 52, width: 4, height: 12),  // right
+          CGRect(x: 52 + armWidth + 4, y: 52, width: armWidth, height: 12),  // back
           CGRect(x: 48, y: 52, width: 4, height: 12),  // left
-          CGRect(x: 52, y: 48, width: 4, height:  4),  // top
-          CGRect(x: 56, y: 48, width: 4, height:  4),  // bottom
+          CGRect(x: 52, y: 48, width: armWidth, height: 4),  // top
+          CGRect(x: 52 + armWidth, y: 48, width: armWidth, height: 4),  // bottom
         ]
         layerName = "left_arm_sleeve"
       } else {
         // Right arm sleeve texture coordinates
         armRects = [
-          CGRect(x: 44, y: 36, width: 4, height: 12),  // front
-          CGRect(x: 48, y: 36, width: 4, height: 12),  // right
-          CGRect(x: 52, y: 36, width: 4, height: 12),  // back
+          CGRect(x: 44, y: 36, width: armWidth, height: 12),  // front
+          CGRect(x: 44 + armWidth, y: 36, width: 4, height: 12),  // right
+          CGRect(x: 44 + armWidth + 4, y: 36, width: armWidth, height: 12),  // back
           CGRect(x: 40, y: 36, width: 4, height: 12),  // left
-          CGRect(x: 44, y: 32, width: 4, height:  4),  // top
-          CGRect(x: 48, y: 32, width: 4, height:  4),  // bottom
+          CGRect(x: 44, y: 32, width: armWidth, height: 4),  // top
+          CGRect(x: 44 + armWidth, y: 32, width: armWidth, height: 4),  // bottom
         ]
         layerName = "right_arm_sleeve"
       }
@@ -305,23 +382,23 @@ extension SceneKitCharacterViewController {
       if isLeft {
         // Left arm base texture coordinates
         armRects = [
-          CGRect(x: 36, y: 52, width: 4, height: 12),  // front
-          CGRect(x: 40, y: 52, width: 4, height: 12),  // right
-          CGRect(x: 44, y: 52, width: 4, height: 12),  // back
+          CGRect(x: 36, y: 52, width: armWidth, height: 12),  // front
+          CGRect(x: 36 + armWidth, y: 52, width: 4, height: 12),  // right
+          CGRect(x: 36 + armWidth + 4, y: 52, width: armWidth, height: 12),  // back
           CGRect(x: 32, y: 52, width: 4, height: 12),  // left
-          CGRect(x: 36, y: 48, width: 4, height:  4),  // top
-          CGRect(x: 40, y: 48, width: 4, height:  4),  // bottom
+          CGRect(x: 36, y: 48, width: armWidth, height: 4),  // top
+          CGRect(x: 36 + armWidth, y: 48, width: armWidth, height: 4),  // bottom
         ]
         layerName = "left_arm"
       } else {
         // Right arm base texture coordinates
         armRects = [
-          CGRect(x: 44, y: 20, width: 4, height: 12),  // front
-          CGRect(x: 48, y: 20, width: 4, height: 12),  // right
-          CGRect(x: 52, y: 20, width: 4, height: 12),  // back
+          CGRect(x: 44, y: 20, width: armWidth, height: 12),  // front
+          CGRect(x: 44 + armWidth, y: 20, width: 4, height: 12),  // right
+          CGRect(x: 44 + armWidth + 4, y: 20, width: armWidth, height: 12),  // back
           CGRect(x: 40, y: 20, width: 4, height: 12),  // left
-          CGRect(x: 44, y: 16, width: 4, height:  4),  // top
-          CGRect(x: 48, y: 16, width: 4, height:  4),  // bottom
+          CGRect(x: 44, y: 16, width: armWidth, height: 4),  // top
+          CGRect(x: 44 + armWidth, y: 16, width: armWidth, height: 4),  // bottom
         ]
         layerName = "right_arm"
       }
@@ -722,11 +799,15 @@ extension SceneKitCharacterViewController {
   private func createArms() {
     guard let skinImage = skinImage else { return }
 
-    // Right arm (4x12x4)
+    let armDimensions = playerModel.armDimensions
+    let armSleeveDimensions = playerModel.armSleeveDimensions
+    let armPositions = playerModel.armPositions
+
+    // Right arm
     let rightArmGeometry = SCNBox(
-      width: 4,
-      height: 12,
-      length: 4,
+      width: armDimensions.width,
+      height: armDimensions.height,
+      length: armDimensions.length,
       chamferRadius: 0
     )
     rightArmGeometry.materials = createArmMaterials(
@@ -736,14 +817,14 @@ extension SceneKitCharacterViewController {
     )
     rightArmNode = SCNNode(geometry: rightArmGeometry)
     rightArmNode.name = "RightArm"
-    rightArmNode.position = SCNVector3(-6, 6, 0)  // Right side of body
+    rightArmNode.position = armPositions.right
     characterGroup.addChildNode(rightArmNode)
 
-    // Right arm sleeve (4.5x12.5x4.5)
+    // Right arm sleeve
     let rightArmSleeveGeometry = SCNBox(
-      width: 4.5,
-      height: 12.5,
-      length: 4.5,
+      width: armSleeveDimensions.width,
+      height: armSleeveDimensions.height,
+      length: armSleeveDimensions.length,
       chamferRadius: 0
     )
     rightArmSleeveGeometry.materials = createArmMaterials(
@@ -753,14 +834,14 @@ extension SceneKitCharacterViewController {
     )
     rightArmSleeveNode = SCNNode(geometry: rightArmSleeveGeometry)
     rightArmSleeveNode.name = "RightArmSleeve"
-    rightArmSleeveNode.position = SCNVector3(-6, 6, 0)
+    rightArmSleeveNode.position = armPositions.right
     characterGroup.addChildNode(rightArmSleeveNode)
 
-    // Left arm (4x12x4)
+    // Left arm
     let leftArmGeometry = SCNBox(
-      width: 4,
-      height: 12,
-      length: 4,
+      width: armDimensions.width,
+      height: armDimensions.height,
+      length: armDimensions.length,
       chamferRadius: 0
     )
     leftArmGeometry.materials = createArmMaterials(
@@ -770,14 +851,14 @@ extension SceneKitCharacterViewController {
     )
     leftArmNode = SCNNode(geometry: leftArmGeometry)
     leftArmNode.name = "LeftArm"
-    leftArmNode.position = SCNVector3(6, 6, 0)  // Left side of body
+    leftArmNode.position = armPositions.left
     characterGroup.addChildNode(leftArmNode)
 
-    // Left arm sleeve (4.5x12.5x4.5)
+    // Left arm sleeve
     let leftArmSleeveGeometry = SCNBox(
-      width: 4.5,
-      height: 12.5,
-      length: 4.5,
+      width: armSleeveDimensions.width,
+      height: armSleeveDimensions.height,
+      length: armSleeveDimensions.length,
       chamferRadius: 0
     )
     leftArmSleeveGeometry.materials = createArmMaterials(
@@ -787,7 +868,7 @@ extension SceneKitCharacterViewController {
     )
     leftArmSleeveNode = SCNNode(geometry: leftArmSleeveGeometry)
     leftArmSleeveNode.name = "LeftArmSleeve"
-    leftArmSleeveNode.position = SCNVector3(6, 6, 0)
+    leftArmSleeveNode.position = armPositions.left
     characterGroup.addChildNode(leftArmSleeveNode)
   }
 
@@ -867,15 +948,15 @@ extension SceneKitCharacterViewController {
 // MARK: - Usage Helper
 extension SceneKitCharacterViewController {
 
-  static func presentInNewWindow() {
-    let characterVC = SceneKitCharacterViewController()
+  static func presentInNewWindow(playerModel: PlayerModel = .steve) {
+    let characterVC = SceneKitCharacterViewController(playerModel: playerModel)
     let window = NSWindow(
       contentRect: NSRect(x: 300, y: 300, width: 800, height: 600),
       styleMask: [.titled, .closable, .resizable],
       backing: .buffered,
       defer: false
     )
-    window.title = "SceneKit Minecraft Character"
+    window.title = "SceneKit Minecraft Character - \(playerModel.displayName)"
     window.contentViewController = characterVC
     window.makeKeyAndOrderFront(nil)
   }

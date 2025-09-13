@@ -11,8 +11,9 @@ A Swift package for rendering Minecraft character skins in 3D using SceneKit and
 - 🔄 Dynamic texture updating
 - 👤 Includes default Steve skin texture
 - 🎛️ Interactive 3D model controls (rotation, zoom)
+- 🧍 Full support for both Steve and Alex (slim) skin formats
 
-> **Note:** Currently only supports Steve format skins. Alex (slim) format support is planned for future releases.
+> **Note:** Supports both Steve format (classic 4-pixel wide arms) and Alex format (slim 3-pixel wide arms) skins with automatic format detection.
 
 ## Requirements
 
@@ -154,7 +155,7 @@ public struct SkinRenderView: View {
 ```
 
 **Parameters:**
-- `texturePath`: Optional path to a custom skin texture file. If nil, uses the default Alex skin.
+- `texturePath`: Optional path to a custom skin texture file. If nil, uses the default Steve skin.
 
 ### SkinRenderViewWithPicker
 
@@ -201,19 +202,19 @@ public class SceneKitCharacterViewController: NSViewController {
 - JPEG
 - Standard Minecraft skin format (64x64 or 64x32 pixels)
 
-> **Important:** This library currently supports only **Steve format** skins (classic 4-pixel wide arms). Alex format skins (slim 3-pixel wide arms) are not yet supported and may not render correctly. Support for Alex format is planned for future releases.
+> **Important:** This library supports both **Steve format** skins (classic 4-pixel wide arms) and **Alex format** skins (slim 3-pixel wide arms) with automatic format detection and proper rendering.
 
 ## Roadmap & TODO
 
 ### ✅ Completed
-- SwiftUI-based skin rendering with SceneKit integration
-- Steve format skin support with proper texture mapping
-- Interactive 3D model controls (rotation, zoom, camera)
-- File picker integration for texture selection
-- Dynamic texture updating capabilities
+- [x] SwiftUI-based skin rendering with SceneKit integration
+- [x] Steve format skin support with proper texture mapping
+- [x] Alex format skin support with automatic format detection
+- [x] Interactive 3D model controls (rotation, zoom, camera)
+- [x] File picker integration for texture selection
+- [x] Dynamic texture updating capabilities
 
 ### 🚧 In Progress / Planned
-- [ ] **Alex format skin support** - Add support for slim (3-pixel wide) arm model
 - [ ] **AppKit integration** - Native AppKit views and controls for non-SwiftUI applications
 - [ ] **Enhanced texture validation** - Better error handling and format detection
 - [ ] **Performance optimizations** - Improved rendering performance for multiple models
