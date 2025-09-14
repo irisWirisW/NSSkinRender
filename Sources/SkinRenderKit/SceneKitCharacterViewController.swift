@@ -58,6 +58,9 @@ public class SceneKitCharacterViewController: NSViewController {
   // Rotation animation settings
   private var rotationDuration: TimeInterval = 15.0 // Duration for one full rotation in seconds
 
+  // Background color settings
+  private var backgroundColor: NSColor = .gray
+
   // Character body part nodes
   private var characterGroup: SCNNode!
   private var headNode: SCNNode!
@@ -84,35 +87,41 @@ public class SceneKitCharacterViewController: NSViewController {
   public convenience init(
     texturePath: String,
     playerModel: PlayerModel = .steve,
-    rotationDuration: TimeInterval = 15.0
+    rotationDuration: TimeInterval = 15.0,
+    backgroundColor: NSColor = .gray
   ) {
     self.init()
     self.texturePath = texturePath
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
+    self.backgroundColor = backgroundColor
     loadTexture()
   }
 
   // Convenience initializer with only model type
   public convenience init(
     playerModel: PlayerModel = .steve,
-    rotationDuration: TimeInterval = 15.0
+    rotationDuration: TimeInterval = 15.0,
+    backgroundColor: NSColor = .gray
   ) {
     self.init()
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
+    self.backgroundColor = backgroundColor
   }
 
   // Convenience initializer with NSImage texture
   public convenience init(
     skinImage: NSImage,
     playerModel: PlayerModel = .steve,
-    rotationDuration: TimeInterval = 15.0
+    rotationDuration: TimeInterval = 15.0,
+    backgroundColor: NSColor = .gray
   ) {
     self.init()
     self.skinImage = skinImage
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
+    self.backgroundColor = backgroundColor
     // No need to call loadTexture() since we already have the image
   }
 
@@ -136,7 +145,7 @@ public class SceneKitCharacterViewController: NSViewController {
     setupUI()
 
     scnView.allowsCameraControl = true
-    scnView.backgroundColor = NSColor.gray
+    scnView.backgroundColor = backgroundColor
   }
 
   private func loadTexture() {
@@ -194,6 +203,12 @@ public class SceneKitCharacterViewController: NSViewController {
     if characterGroup != nil {
       setupRotationAnimation()
     }
+  }
+
+  // Public method for updating background color
+  public func updateBackgroundColor(_ color: NSColor) {
+    self.backgroundColor = color
+    scnView?.backgroundColor = color
   }
 
   private func setupScene() {
@@ -1005,11 +1020,13 @@ extension SceneKitCharacterViewController {
 
   static func presentInNewWindow(
     playerModel: PlayerModel = .steve,
-    rotationDuration: TimeInterval = 15.0
+    rotationDuration: TimeInterval = 15.0,
+    backgroundColor: NSColor = .gray
   ) {
     let characterVC = SceneKitCharacterViewController(
       playerModel: playerModel,
-      rotationDuration: rotationDuration
+      rotationDuration: rotationDuration,
+      backgroundColor: backgroundColor
     )
     let window = NSWindow(
       contentRect: NSRect(x: 300, y: 300, width: 800, height: 600),

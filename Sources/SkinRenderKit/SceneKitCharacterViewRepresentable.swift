@@ -18,25 +18,31 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
   let skinImage: NSImage?
   /// Rotation duration for character animation (0 = no rotation)
   let rotationDuration: TimeInterval
+  /// Background color for the 3D scene
+  let backgroundColor: NSColor
 
   /// Initialize the representable with an optional texture path
   /// - Parameters:
   ///   - texturePath: Path to the Minecraft skin texture file
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
-  public init(texturePath: String? = nil, rotationDuration: TimeInterval = 15.0) {
+  ///   - backgroundColor: Background color for the 3D scene
+  public init(texturePath: String? = nil, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
     self.texturePath = texturePath
     self.skinImage = nil
     self.rotationDuration = rotationDuration
+    self.backgroundColor = backgroundColor
   }
 
   /// Initialize the representable with a direct NSImage texture
   /// - Parameters:
   ///   - skinImage: The NSImage containing the Minecraft skin texture
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
-  public init(skinImage: NSImage, rotationDuration: TimeInterval = 15.0) {
+  ///   - backgroundColor: Background color for the 3D scene
+  public init(skinImage: NSImage, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
     self.texturePath = nil
     self.skinImage = skinImage
     self.rotationDuration = rotationDuration
+    self.backgroundColor = backgroundColor
   }
 
   /// Create the underlying NSViewController for character rendering
@@ -46,15 +52,20 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
     if let skinImage = skinImage {
       return SceneKitCharacterViewController(
         skinImage: skinImage,
-        rotationDuration: rotationDuration
+        rotationDuration: rotationDuration,
+        backgroundColor: backgroundColor
       )
     } else if let texturePath = texturePath {
       return SceneKitCharacterViewController(
         texturePath: texturePath,
-        rotationDuration: rotationDuration
+        rotationDuration: rotationDuration,
+        backgroundColor: backgroundColor
       )
     } else {
-      return SceneKitCharacterViewController(rotationDuration: rotationDuration)
+      return SceneKitCharacterViewController(
+        rotationDuration: rotationDuration,
+        backgroundColor: backgroundColor
+      )
     }
   }
 
@@ -75,6 +86,9 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
 
     // Update rotation speed
     nsViewController.updateRotationDuration(rotationDuration)
+
+    // Update background color
+    nsViewController.updateBackgroundColor(backgroundColor)
   }
 }
 
@@ -87,38 +101,46 @@ public struct SkinRenderView: View {
   let skinImage: NSImage?
   /// Rotation duration for character animation (0 = no rotation)
   let rotationDuration: TimeInterval
+  /// Background color for the 3D scene
+  let backgroundColor: NSColor
 
   /// Initialize the skin render view with an optional texture path
   /// - Parameters:
   ///   - texturePath: Path to the Minecraft skin texture file
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
-  public init(texturePath: String? = nil, rotationDuration: TimeInterval = 15.0) {
+  ///   - backgroundColor: Background color for the 3D scene
+  public init(texturePath: String? = nil, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
     self.texturePath = texturePath
     self.skinImage = nil
     self.rotationDuration = rotationDuration
+    self.backgroundColor = backgroundColor
   }
 
   /// Initialize the skin render view with a direct NSImage texture
   /// - Parameters:
   ///   - skinImage: The NSImage containing the Minecraft skin texture
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
-  public init(skinImage: NSImage, rotationDuration: TimeInterval = 15.0) {
+  ///   - backgroundColor: Background color for the 3D scene
+  public init(skinImage: NSImage, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
     self.texturePath = nil
     self.skinImage = skinImage
     self.rotationDuration = rotationDuration
+    self.backgroundColor = backgroundColor
   }
 
   public var body: some View {
     if let skinImage = skinImage {
       SceneKitCharacterViewRepresentable(
         skinImage: skinImage,
-        rotationDuration: rotationDuration
+        rotationDuration: rotationDuration,
+        backgroundColor: backgroundColor
       )
       .frame(minWidth: 400, minHeight: 300)
     } else {
       SceneKitCharacterViewRepresentable(
         texturePath: texturePath,
-        rotationDuration: rotationDuration
+        rotationDuration: rotationDuration,
+        backgroundColor: backgroundColor
       )
       .frame(minWidth: 400, minHeight: 300)
     }
@@ -134,11 +156,16 @@ public struct SkinRenderViewWithPicker: View {
   @State private var showingFilePicker = false
   /// Rotation duration for character animation (0 = no rotation)
   @State private var rotationDuration: TimeInterval
+  /// Background color for the 3D scene
+  @State private var backgroundColor: NSColor
 
   /// Initialize the view with file picker functionality
-  /// - Parameter rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
-  public init(rotationDuration: TimeInterval = 15.0) {
+  /// - Parameters:
+  ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
+  ///   - backgroundColor: Background color for the 3D scene
+  public init(rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
     self._rotationDuration = State(initialValue: rotationDuration)
+    self._backgroundColor = State(initialValue: backgroundColor)
   }
 
   public var body: some View {
@@ -177,9 +204,26 @@ public struct SkinRenderViewWithPicker: View {
       }
       .padding(.horizontal)
 
+      // Background color control
+      HStack {
+        Text("Background Color:")
+          .font(.caption)
+
+        ColorPicker("", selection: Binding(
+          get: { Color(backgroundColor) },
+          set: { backgroundColor = NSColor($0) }
+        ))
+        .frame(width: 50)
+        .labelsHidden()
+
+        Spacer()
+      }
+      .padding(.horizontal)
+
       SkinRenderView(
         texturePath: selectedTexturePath,
-        rotationDuration: rotationDuration
+        rotationDuration: rotationDuration,
+        backgroundColor: backgroundColor
       )
     }
   }
