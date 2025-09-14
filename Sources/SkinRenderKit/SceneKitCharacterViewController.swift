@@ -65,6 +65,9 @@ public class SceneKitCharacterViewController: NSViewController {
   // Background color settings
   private var backgroundColor: NSColor = .gray
 
+  // UI control settings
+  private var showButtons: Bool = true
+
   // Character body part nodes
   private var characterGroup: SCNNode!
   private var headNode: SCNNode!
@@ -112,13 +115,15 @@ public class SceneKitCharacterViewController: NSViewController {
     texturePath: String,
     playerModel: PlayerModel = .steve,
     rotationDuration: TimeInterval = 15.0,
-    backgroundColor: NSColor = .gray
+    backgroundColor: NSColor = .gray,
+    showButtons: Bool = true
   ) {
     self.init()
     self.texturePath = texturePath
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
+    self.showButtons = showButtons
     loadTexture()
   }
 
@@ -128,7 +133,8 @@ public class SceneKitCharacterViewController: NSViewController {
     capeTexturePath: String? = nil,
     playerModel: PlayerModel = .steve,
     rotationDuration: TimeInterval = 15.0,
-    backgroundColor: NSColor = .gray
+    backgroundColor: NSColor = .gray,
+    showButtons: Bool = true
   ) {
     self.init()
     self.texturePath = texturePath
@@ -136,6 +142,7 @@ public class SceneKitCharacterViewController: NSViewController {
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
+    self.showButtons = showButtons
     loadTexture()
     if let capeTexturePath = capeTexturePath {
       loadCapeTexture(from: capeTexturePath)
@@ -146,12 +153,14 @@ public class SceneKitCharacterViewController: NSViewController {
   public convenience init(
     playerModel: PlayerModel = .steve,
     rotationDuration: TimeInterval = 15.0,
-    backgroundColor: NSColor = .gray
+    backgroundColor: NSColor = .gray,
+    showButtons: Bool = true
   ) {
     self.init()
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
+    self.showButtons = showButtons
   }
 
   // Convenience initializer with NSImage texture
@@ -159,13 +168,15 @@ public class SceneKitCharacterViewController: NSViewController {
     skinImage: NSImage,
     playerModel: PlayerModel = .steve,
     rotationDuration: TimeInterval = 15.0,
-    backgroundColor: NSColor = .gray
+    backgroundColor: NSColor = .gray,
+    showButtons: Bool = true
   ) {
     self.init()
     self.skinImage = skinImage
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
+    self.showButtons = showButtons
     // No need to call loadTexture() since we already have the image
   }
 
@@ -175,7 +186,8 @@ public class SceneKitCharacterViewController: NSViewController {
     capeImage: NSImage? = nil,
     playerModel: PlayerModel = .steve,
     rotationDuration: TimeInterval = 15.0,
-    backgroundColor: NSColor = .gray
+    backgroundColor: NSColor = .gray,
+    showButtons: Bool = true
   ) {
     self.init()
     self.skinImage = skinImage
@@ -183,6 +195,7 @@ public class SceneKitCharacterViewController: NSViewController {
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
+    self.showButtons = showButtons
     // No need to call loadTexture() since we already have the images
   }
 
@@ -192,7 +205,8 @@ public class SceneKitCharacterViewController: NSViewController {
     capeImage: NSImage,
     playerModel: PlayerModel = .steve,
     rotationDuration: TimeInterval = 15.0,
-    backgroundColor: NSColor = .gray
+    backgroundColor: NSColor = .gray,
+    showButtons: Bool = true
   ) {
     self.init()
     self.texturePath = texturePath
@@ -200,6 +214,7 @@ public class SceneKitCharacterViewController: NSViewController {
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
+    self.showButtons = showButtons
     if let texturePath = texturePath {
       loadTexture()
     }
@@ -348,6 +363,26 @@ public class SceneKitCharacterViewController: NSViewController {
     }
   }
 
+  // Public method for updating button visibility
+  public func updateShowButtons(_ show: Bool) {
+    // Don't update if showButtons value hasn't changed
+    guard self.showButtons != show else { return }
+
+    self.showButtons = show
+
+    // If hiding buttons, remove them from view
+    if !show {
+      toggleButton?.removeFromSuperview()
+      modelTypeButton?.removeFromSuperview()
+      capeToggleButton?.removeFromSuperview()
+      capeAnimationButton?.removeFromSuperview()
+      walkingAnimationButton?.removeFromSuperview()
+    } else {
+      // If showing buttons, recreate them
+      setupUI()
+    }
+  }
+
   private func setupScene() {
     scene = SCNScene()
     scnView.scene = scene
@@ -421,6 +456,9 @@ public class SceneKitCharacterViewController: NSViewController {
   }
 
   private func setupUI() {
+    // Only create buttons if showButtons is true
+    guard showButtons else { return }
+
     // Create button to toggle outer layers
     toggleButton = NSButton(frame: NSRect(x: 20, y: 20, width: 130, height: 30))
     toggleButton.title =
@@ -494,6 +532,9 @@ public class SceneKitCharacterViewController: NSViewController {
   }
 
   private func isPointOverUIButton(_ point: CGPoint) -> Bool {
+    // If buttons are not shown, they can't be clicked
+    guard showButtons else { return false }
+
     let buttons = [toggleButton, modelTypeButton, capeToggleButton, capeAnimationButton, walkingAnimationButton]
 
     for button in buttons {
