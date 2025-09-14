@@ -69,16 +69,22 @@ public class SceneKitCharacterViewController: NSViewController {
   private var characterGroup: SCNNode!
   private var headNode: SCNNode!
   private var hatNode: SCNNode!
+  private var headGroupNode: SCNNode! // Group for head + hat to sync movement
   private var bodyNode: SCNNode!
   private var jacketNode: SCNNode!
   private var rightArmNode: SCNNode!
   private var rightArmSleeveNode: SCNNode!
   private var leftArmNode: SCNNode!
   private var leftArmSleeveNode: SCNNode!
+  // Limb group nodes for proper pivot (at top hinge)
+  private var rightArmGroupNode: SCNNode!
+  private var leftArmGroupNode: SCNNode!
   private var rightLegNode: SCNNode!
   private var rightLegSleeveNode: SCNNode!
   private var leftLegNode: SCNNode!
   private var leftLegSleeveNode: SCNNode!
+  private var rightLegGroupNode: SCNNode!
+  private var leftLegGroupNode: SCNNode!
   private var capeNode: SCNNode!
   private var capePivotNode: SCNNode! // Pivot for cape rotation/attachment
 
@@ -91,6 +97,12 @@ public class SceneKitCharacterViewController: NSViewController {
   private var capeToggleButton: NSButton!
   private var capeAnimationEnabled: Bool = true
   private var capeAnimationButton: NSButton!
+  // Cape sway configuration
+  private var baseCapeSwayAmplitude: Float = Float.pi / 24  // idle sway amplitude (~7.5°)
+  private var walkingCapeSwayMultiplier: Float = 1.9        // amplified when walking
+  // Walking animation control
+  private var walkingAnimationEnabled: Bool = false
+  private var walkingAnimationButton: NSButton!
 
   // Model type control
   private var modelTypeButton: NSButton!
@@ -211,6 +223,7 @@ public class SceneKitCharacterViewController: NSViewController {
     setupCamera()
     setupLighting()
     setupUI()
+    setupGestureRecognizers()
 
     scnView.allowsCameraControl = true
     scnView.backgroundColor = backgroundColor
@@ -347,6 +360,11 @@ public class SceneKitCharacterViewController: NSViewController {
 
     // Add rotation animation
     setupRotationAnimation()
+
+    // Resume walking animation if enabled
+    if walkingAnimationEnabled {
+      startWalkingAnimation()
+    }
   }
 
   private func setupRotationAnimation() {
@@ -432,6 +450,47 @@ public class SceneKitCharacterViewController: NSViewController {
     capeAnimationButton.autoresizingMask = [.maxXMargin, .maxYMargin]
 
     view.addSubview(capeAnimationButton)
+
+    // Create button to toggle walking animation
+    walkingAnimationButton = NSButton(frame: NSRect(x: 20, y: 180, width: 130, height: 30))
+    walkingAnimationButton.title = walkingAnimationEnabled ? "Stop Walking" : "Start Walking"
+    walkingAnimationButton.bezelStyle = .rounded
+    walkingAnimationButton.target = self
+    walkingAnimationButton.action = #selector(toggleWalkingAnimationAction)
+    walkingAnimationButton.autoresizingMask = [.maxXMargin, .maxYMargin]
+    view.addSubview(walkingAnimationButton)
+  }
+
+  private func setupGestureRecognizers() {
+    // Add right-click gesture to toggle walking animation
+    let rightClickGesture = NSClickGestureRecognizer(target: self, action: #selector(handleRightClick(_:)))
+    rightClickGesture.buttonMask = 0x2 // Right mouse button
+    scnView.addGestureRecognizer(rightClickGesture)
+  }
+
+  @objc private func handleRightClick(_ gestureRecognizer: NSClickGestureRecognizer) {
+    let location = gestureRecognizer.location(in: scnView)
+
+    // Check if click is over any UI button to avoid conflicts
+    if isPointOverUIButton(location) {
+      return
+    }
+
+    // Toggle walking animation on right-click
+    toggleWalkingAnimationAction()
+
+    print("Right-click detected: toggled walking animation to \(walkingAnimationEnabled ? "enabled" : "disabled")")
+  }
+
+  private func isPointOverUIButton(_ point: CGPoint) -> Bool {
+    let buttons = [toggleButton, modelTypeButton, capeToggleButton, capeAnimationButton, walkingAnimationButton]
+
+    for button in buttons {
+      if let button = button, button.frame.contains(point) {
+        return true
+      }
+    }
+    return false
   }
 
   @objc private func toggleOuterLayers() {
@@ -483,6 +542,17 @@ public class SceneKitCharacterViewController: NSViewController {
     setupCharacter()
 
     print("Switched to \(playerModel.displayName) model")
+  }
+
+  @objc private func toggleWalkingAnimationAction() {
+    walkingAnimationEnabled.toggle()
+    if walkingAnimationEnabled {
+      startWalkingAnimation()
+    } else {
+      stopWalkingAnimation()
+    }
+    walkingAnimationButton.title = walkingAnimationEnabled ? "Stop Walking" : "Start Walking"
+    if capeAnimationEnabled { refreshCapeSwayAnimation() }
   }
 }
 
@@ -1025,23 +1095,28 @@ extension SceneKitCharacterViewController {
 extension SceneKitCharacterViewController {
 
   private func createHead() {
+    guard let skinImage = skinImage else { return }
+    // Group positioned at head center for rotations / bobbing; children centered inside
+    headGroupNode = SCNNode()
+    headGroupNode.name = "HeadGroup"
+    headGroupNode.position = SCNVector3(0, 16, 0)
+    characterGroup.addChildNode(headGroupNode)
+
     // Base head (8x8x8)
     let headGeometry = SCNBox(width: 8, height: 8, length: 8, chamferRadius: 0)
-    guard let skinImage = skinImage else { return }
-
     headGeometry.materials = createHeadMaterials(from: skinImage, isHat: false)
     headNode = SCNNode(geometry: headGeometry)
     headNode.name = "Head"
-    headNode.position = SCNVector3(0, 16, 0)  // Adjust head position: body top(12) + head height half(4) = 16
-    characterGroup.addChildNode(headNode)
+    headNode.position = SCNVector3Zero
+    headGroupNode.addChildNode(headNode)
 
     // Hat layer (9x9x9)
     let hatGeometry = SCNBox(width: 9, height: 9, length: 9, chamferRadius: 0)
     hatGeometry.materials = createHeadMaterials(from: skinImage, isHat: true)
     hatNode = SCNNode(geometry: hatGeometry)
     hatNode.name = "Hat"
-    hatNode.position = SCNVector3(0, 16, 0)  // Hat position same as head
-    characterGroup.addChildNode(hatNode)
+    hatNode.position = SCNVector3Zero
+    headGroupNode.addChildNode(hatNode)
   }
 
   private func createBody() {
@@ -1081,146 +1156,90 @@ extension SceneKitCharacterViewController {
     let armDimensions = playerModel.armDimensions
     let armSleeveDimensions = playerModel.armSleeveDimensions
     let armPositions = playerModel.armPositions
+    // Group nodes placed at shoulder pivot (top of arms). Arm height = 12 so child offset -6 to hang down.
+    rightArmGroupNode = SCNNode()
+    rightArmGroupNode.name = "RightArmGroup"
+    rightArmGroupNode.position = SCNVector3(armPositions.right.x, armPositions.right.y + armDimensions.height / 2, armPositions.right.z)
+    characterGroup.addChildNode(rightArmGroupNode)
 
-    // Right arm
-    let rightArmGeometry = SCNBox(
-      width: armDimensions.width,
-      height: armDimensions.height,
-      length: armDimensions.length,
-      chamferRadius: 0
-    )
-    rightArmGeometry.materials = createArmMaterials(
-      from: skinImage,
-      isLeft: false,
-      isSleeve: false
-    )
+    leftArmGroupNode = SCNNode()
+    leftArmGroupNode.name = "LeftArmGroup"
+    leftArmGroupNode.position = SCNVector3(armPositions.left.x, armPositions.left.y + armDimensions.height / 2, armPositions.left.z)
+    characterGroup.addChildNode(leftArmGroupNode)
+
+    // Right arm geometry
+    let rightArmGeometry = SCNBox(width: armDimensions.width, height: armDimensions.height, length: armDimensions.length, chamferRadius: 0)
+    rightArmGeometry.materials = createArmMaterials(from: skinImage, isLeft: false, isSleeve: false)
     rightArmNode = SCNNode(geometry: rightArmGeometry)
     rightArmNode.name = "RightArm"
-    rightArmNode.position = armPositions.right
-    characterGroup.addChildNode(rightArmNode)
+    rightArmNode.position = SCNVector3(0, -armDimensions.height / 2, 0)
+    rightArmGroupNode.addChildNode(rightArmNode)
 
-    // Right arm sleeve
-    let rightArmSleeveGeometry = SCNBox(
-      width: armSleeveDimensions.width,
-      height: armSleeveDimensions.height,
-      length: armSleeveDimensions.length,
-      chamferRadius: 0
-    )
-    rightArmSleeveGeometry.materials = createArmMaterials(
-      from: skinImage,
-      isLeft: false,
-      isSleeve: true
-    )
+    let rightArmSleeveGeometry = SCNBox(width: armSleeveDimensions.width, height: armSleeveDimensions.height, length: armSleeveDimensions.length, chamferRadius: 0)
+    rightArmSleeveGeometry.materials = createArmMaterials(from: skinImage, isLeft: false, isSleeve: true)
     rightArmSleeveNode = SCNNode(geometry: rightArmSleeveGeometry)
     rightArmSleeveNode.name = "RightArmSleeve"
-    rightArmSleeveNode.position = armPositions.right
-    characterGroup.addChildNode(rightArmSleeveNode)
+    rightArmSleeveNode.position = SCNVector3(0, -armSleeveDimensions.height / 2, 0)
+    rightArmGroupNode.addChildNode(rightArmSleeveNode)
 
-    // Left arm
-    let leftArmGeometry = SCNBox(
-      width: armDimensions.width,
-      height: armDimensions.height,
-      length: armDimensions.length,
-      chamferRadius: 0
-    )
-    leftArmGeometry.materials = createArmMaterials(
-      from: skinImage,
-      isLeft: true,
-      isSleeve: false
-    )
+    // Left arm geometry
+    let leftArmGeometry = SCNBox(width: armDimensions.width, height: armDimensions.height, length: armDimensions.length, chamferRadius: 0)
+    leftArmGeometry.materials = createArmMaterials(from: skinImage, isLeft: true, isSleeve: false)
     leftArmNode = SCNNode(geometry: leftArmGeometry)
     leftArmNode.name = "LeftArm"
-    leftArmNode.position = armPositions.left
-    characterGroup.addChildNode(leftArmNode)
+    leftArmNode.position = SCNVector3(0, -armDimensions.height / 2, 0)
+    leftArmGroupNode.addChildNode(leftArmNode)
 
-    // Left arm sleeve
-    let leftArmSleeveGeometry = SCNBox(
-      width: armSleeveDimensions.width,
-      height: armSleeveDimensions.height,
-      length: armSleeveDimensions.length,
-      chamferRadius: 0
-    )
-    leftArmSleeveGeometry.materials = createArmMaterials(
-      from: skinImage,
-      isLeft: true,
-      isSleeve: true
-    )
+    let leftArmSleeveGeometry = SCNBox(width: armSleeveDimensions.width, height: armSleeveDimensions.height, length: armSleeveDimensions.length, chamferRadius: 0)
+    leftArmSleeveGeometry.materials = createArmMaterials(from: skinImage, isLeft: true, isSleeve: true)
     leftArmSleeveNode = SCNNode(geometry: leftArmSleeveGeometry)
     leftArmSleeveNode.name = "LeftArmSleeve"
-    leftArmSleeveNode.position = armPositions.left
-    characterGroup.addChildNode(leftArmSleeveNode)
+    leftArmSleeveNode.position = SCNVector3(0, -armSleeveDimensions.height / 2, 0)
+    leftArmGroupNode.addChildNode(leftArmSleeveNode)
   }
 
   private func createLegs() {
     guard let skinImage = skinImage else { return }
+    // Group nodes at hip pivot (top of legs). Leg height = 12 so child offset -6.
+    rightLegGroupNode = SCNNode()
+    rightLegGroupNode.name = "RightLegGroup"
+    rightLegGroupNode.position = SCNVector3(-2, 0, 0) // Hip y=0 (body center is 6, leg extends downward)
+    characterGroup.addChildNode(rightLegGroupNode)
 
-    // Right leg (4x12x4)
-    let rightLegGeometry = SCNBox(
-      width: 4,
-      height: 12,
-      length: 4,
-      chamferRadius: 0
-    )
-    rightLegGeometry.materials = createLegMaterials(
-      from: skinImage,
-      isLeft: false,
-      isSleeve: false
-    )
+    leftLegGroupNode = SCNNode()
+    leftLegGroupNode.name = "LeftLegGroup"
+    leftLegGroupNode.position = SCNVector3(2, 0, 0)
+    characterGroup.addChildNode(leftLegGroupNode)
+
+    // Right leg
+    let rightLegGeometry = SCNBox(width: 4, height: 12, length: 4, chamferRadius: 0)
+    rightLegGeometry.materials = createLegMaterials(from: skinImage, isLeft: false, isSleeve: false)
     rightLegNode = SCNNode(geometry: rightLegGeometry)
     rightLegNode.name = "RightLeg"
-    rightLegNode.position = SCNVector3(-2, -6, 0)  // Right bottom of body
-    characterGroup.addChildNode(rightLegNode)
+    rightLegNode.position = SCNVector3(0, -6, 0)
+    rightLegGroupNode.addChildNode(rightLegNode)
 
-    // Right leg pants (4.5x12.5x4.5)
-    let rightLegSleeveGeometry = SCNBox(
-      width: 4.5,
-      height: 12.5,
-      length: 4.5,
-      chamferRadius: 0
-    )
-    rightLegSleeveGeometry.materials = createLegMaterials(
-      from: skinImage,
-      isLeft: false,
-      isSleeve: true
-    )
+    let rightLegSleeveGeometry = SCNBox(width: 4.5, height: 12.5, length: 4.5, chamferRadius: 0)
+    rightLegSleeveGeometry.materials = createLegMaterials(from: skinImage, isLeft: false, isSleeve: true)
     rightLegSleeveNode = SCNNode(geometry: rightLegSleeveGeometry)
     rightLegSleeveNode.name = "RightLegSleeve"
-    rightLegSleeveNode.position = SCNVector3(-2, -6, 0)
-    characterGroup.addChildNode(rightLegSleeveNode)
+    rightLegSleeveNode.position = SCNVector3(0, -6.25, 0) // half of 12.5
+    rightLegGroupNode.addChildNode(rightLegSleeveNode)
 
-    // Left leg (4x12x4)
-    let leftLegGeometry = SCNBox(
-      width: 4,
-      height: 12,
-      length: 4,
-      chamferRadius: 0
-    )
-    leftLegGeometry.materials = createLegMaterials(
-      from: skinImage,
-      isLeft: true,
-      isSleeve: false
-    )
+    // Left leg
+    let leftLegGeometry = SCNBox(width: 4, height: 12, length: 4, chamferRadius: 0)
+    leftLegGeometry.materials = createLegMaterials(from: skinImage, isLeft: true, isSleeve: false)
     leftLegNode = SCNNode(geometry: leftLegGeometry)
     leftLegNode.name = "LeftLeg"
-    leftLegNode.position = SCNVector3(2, -6, 0)  // Left bottom of body
-    characterGroup.addChildNode(leftLegNode)
+    leftLegNode.position = SCNVector3(0, -6, 0)
+    leftLegGroupNode.addChildNode(leftLegNode)
 
-    // Left leg pants (4.5x12.5x4.5)
-    let leftLegSleeveGeometry = SCNBox(
-      width: 4.5,
-      height: 12.5,
-      length: 4.5,
-      chamferRadius: 0
-    )
-    leftLegSleeveGeometry.materials = createLegMaterials(
-      from: skinImage,
-      isLeft: true,
-      isSleeve: true
-    )
+    let leftLegSleeveGeometry = SCNBox(width: 4.5, height: 12.5, length: 4.5, chamferRadius: 0)
+    leftLegSleeveGeometry.materials = createLegMaterials(from: skinImage, isLeft: true, isSleeve: true)
     leftLegSleeveNode = SCNNode(geometry: leftLegSleeveGeometry)
     leftLegSleeveNode.name = "LeftLegSleeve"
-    leftLegSleeveNode.position = SCNVector3(2, -6, 0)
-    characterGroup.addChildNode(leftLegSleeveNode)
+    leftLegSleeveNode.position = SCNVector3(0, -6.25, 0)
+    leftLegGroupNode.addChildNode(leftLegSleeveNode)
   }
 
   private func createCape() {
@@ -1301,7 +1320,7 @@ extension SceneKitCharacterViewController {
 
     // Create subtle swaying motion like wind effect
     let baseRotationX = Float.pi / 14  // Base backward tilt (~12.8°)
-    let swayAmplitude: Float = Float.pi / 24  // ~7.5° sway range
+    let swayAmplitude: Float = baseCapeSwayAmplitude * (walkingAnimationEnabled ? walkingCapeSwayMultiplier : 1.0)
 
     // Animation sequence: sway left, center, right, center
     let rotateLeft = SCNAction.rotateTo(
@@ -1359,6 +1378,77 @@ extension SceneKitCharacterViewController {
       // Reset to base rotation
       capePivotNode.eulerAngles = SCNVector3(Float.pi / 14, 0, 0)
       print("🔇 Cape animation disabled")
+    }
+  }
+
+  private func refreshCapeSwayAnimation() {
+    guard capeAnimationEnabled else { return }
+    capePivotNode?.removeAction(forKey: "capeSwayAnimation")
+    addCapeSwayAnimation()
+  }
+
+  // MARK: - Walking Animation
+  private func startWalkingAnimation() {
+    // Remove existing limb actions on group nodes
+    rightArmGroupNode?.removeAction(forKey: "walkSwing")
+    leftArmGroupNode?.removeAction(forKey: "walkSwing")
+    rightLegGroupNode?.removeAction(forKey: "walkSwing")
+    leftLegGroupNode?.removeAction(forKey: "walkSwing")
+
+    // Swing amplitude (radians) ~ Minecraft style
+    let armAmplitude: CGFloat = .pi / 4 // 45°
+    let legAmplitude: CGFloat = .pi / 5 // 36°
+    let cycleDuration: TimeInterval = 0.8
+
+    func swingAction(amplitude: CGFloat) -> SCNAction {
+      let forward = SCNAction.rotateTo(x: amplitude, y: 0, z: 0, duration: cycleDuration / 2, usesShortestUnitArc: true)
+      let backward = SCNAction.rotateTo(x: -amplitude, y: 0, z: 0, duration: cycleDuration / 2, usesShortestUnitArc: true)
+      forward.timingMode = .easeInEaseOut
+      backward.timingMode = .easeInEaseOut
+      return SCNAction.repeatForever(SCNAction.sequence([forward, backward]))
+    }
+
+    // Arms: opposite phase using group nodes
+    if let rightArmGroupNode = rightArmGroupNode { rightArmGroupNode.runAction(swingAction(amplitude: armAmplitude), forKey: "walkSwing") }
+    if let leftArmGroupNode = leftArmGroupNode {
+      let delay = SCNAction.wait(duration: cycleDuration / 2)
+      leftArmGroupNode.runAction(SCNAction.sequence([delay, swingAction(amplitude: armAmplitude)]), forKey: "walkSwing")
+    }
+
+    // Legs: opposite to corresponding arm using group nodes
+    if let rightLegGroupNode = rightLegGroupNode {
+      let delay = SCNAction.wait(duration: cycleDuration / 2)
+      rightLegGroupNode.runAction(SCNAction.sequence([delay, swingAction(amplitude: legAmplitude)]), forKey: "walkSwing")
+    }
+    if let leftLegGroupNode = leftLegGroupNode { leftLegGroupNode.runAction(swingAction(amplitude: legAmplitude), forKey: "walkSwing") }
+
+    // Slight head bob (small vertical movement) using group node so hat follows
+    if let headGroupNode = headGroupNode {
+      headGroupNode.removeAction(forKey: "headBob")
+      let up = SCNAction.moveBy(x: 0, y: 0.3, z: 0, duration: cycleDuration / 2)
+      let down = SCNAction.moveBy(x: 0, y: -0.3, z: 0, duration: cycleDuration / 2)
+      up.timingMode = .easeInEaseOut
+      down.timingMode = .easeInEaseOut
+      headGroupNode.runAction(SCNAction.repeatForever(SCNAction.sequence([up, down])), forKey: "headBob")
+    }
+  }
+
+  private func stopWalkingAnimation() {
+    // Stop limb actions and reset rotations on group nodes
+    for node in [rightArmGroupNode, leftArmGroupNode, rightLegGroupNode, leftLegGroupNode] { node?.removeAction(forKey: "walkSwing") }
+    for node in [rightArmGroupNode, leftArmGroupNode, rightLegGroupNode, leftLegGroupNode] {
+      SCNTransaction.begin()
+      SCNTransaction.animationDuration = 0.25
+      node?.eulerAngles.x = 0
+      SCNTransaction.commit()
+    }
+    headGroupNode?.removeAction(forKey: "headBob")
+    // Reset head group position smoothly
+    if let headGroupNode = headGroupNode {
+      SCNTransaction.begin()
+      SCNTransaction.animationDuration = 0.25
+      headGroupNode.position.y = 16
+      SCNTransaction.commit()
     }
   }
 }
