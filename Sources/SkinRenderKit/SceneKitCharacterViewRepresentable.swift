@@ -14,21 +14,47 @@ internal import UniformTypeIdentifiers
 public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable {
   /// Optional path to the texture file for the character skin
   let texturePath: String?
+  /// Optional NSImage for direct texture input
+  let skinImage: NSImage?
+  /// Rotation duration for character animation (0 = no rotation)
+  let rotationDuration: TimeInterval
 
   /// Initialize the representable with an optional texture path
-  /// - Parameter texturePath: Path to the Minecraft skin texture file
-  public init(texturePath: String? = nil) {
+  /// - Parameters:
+  ///   - texturePath: Path to the Minecraft skin texture file
+  ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
+  public init(texturePath: String? = nil, rotationDuration: TimeInterval = 15.0) {
     self.texturePath = texturePath
+    self.skinImage = nil
+    self.rotationDuration = rotationDuration
+  }
+
+  /// Initialize the representable with a direct NSImage texture
+  /// - Parameters:
+  ///   - skinImage: The NSImage containing the Minecraft skin texture
+  ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
+  public init(skinImage: NSImage, rotationDuration: TimeInterval = 15.0) {
+    self.texturePath = nil
+    self.skinImage = skinImage
+    self.rotationDuration = rotationDuration
   }
 
   /// Create the underlying NSViewController for character rendering
   /// - Parameter context: SwiftUI representable context
   /// - Returns: Configured SceneKitCharacterViewController instance
   public func makeNSViewController(context: Context) -> SceneKitCharacterViewController {
-    if let texturePath = texturePath {
-      return SceneKitCharacterViewController(texturePath: texturePath)
+    if let skinImage = skinImage {
+      return SceneKitCharacterViewController(
+        skinImage: skinImage,
+        rotationDuration: rotationDuration
+      )
+    } else if let texturePath = texturePath {
+      return SceneKitCharacterViewController(
+        texturePath: texturePath,
+        rotationDuration: rotationDuration
+      )
     } else {
-      return SceneKitCharacterViewController()
+      return SceneKitCharacterViewController(rotationDuration: rotationDuration)
     }
   }
 
@@ -40,10 +66,15 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
     _ nsViewController: SceneKitCharacterViewController,
     context: Context
   ) {
-    // Update texture when texturePath changes
-    if let texturePath = texturePath {
+    // Update texture when skinImage or texturePath changes
+    if let skinImage = skinImage {
+      nsViewController.updateTexture(image: skinImage)
+    } else if let texturePath = texturePath {
       nsViewController.updateTexture(path: texturePath)
     }
+
+    // Update rotation speed
+    nsViewController.updateRotationDuration(rotationDuration)
   }
 }
 
@@ -52,16 +83,45 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
 public struct SkinRenderView: View {
   /// Optional path to the texture file for the character skin
   let texturePath: String?
+  /// Optional NSImage for direct texture input
+  let skinImage: NSImage?
+  /// Rotation duration for character animation (0 = no rotation)
+  let rotationDuration: TimeInterval
 
   /// Initialize the skin render view with an optional texture path
-  /// - Parameter texturePath: Path to the Minecraft skin texture file
-  public init(texturePath: String? = nil) {
+  /// - Parameters:
+  ///   - texturePath: Path to the Minecraft skin texture file
+  ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
+  public init(texturePath: String? = nil, rotationDuration: TimeInterval = 15.0) {
     self.texturePath = texturePath
+    self.skinImage = nil
+    self.rotationDuration = rotationDuration
+  }
+
+  /// Initialize the skin render view with a direct NSImage texture
+  /// - Parameters:
+  ///   - skinImage: The NSImage containing the Minecraft skin texture
+  ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
+  public init(skinImage: NSImage, rotationDuration: TimeInterval = 15.0) {
+    self.texturePath = nil
+    self.skinImage = skinImage
+    self.rotationDuration = rotationDuration
   }
 
   public var body: some View {
-    SceneKitCharacterViewRepresentable(texturePath: texturePath)
+    if let skinImage = skinImage {
+      SceneKitCharacterViewRepresentable(
+        skinImage: skinImage,
+        rotationDuration: rotationDuration
+      )
       .frame(minWidth: 400, minHeight: 300)
+    } else {
+      SceneKitCharacterViewRepresentable(
+        texturePath: texturePath,
+        rotationDuration: rotationDuration
+      )
+      .frame(minWidth: 400, minHeight: 300)
+    }
   }
 }
 
@@ -72,9 +132,14 @@ public struct SkinRenderViewWithPicker: View {
   @State private var selectedTexturePath: String?
   /// Controls the visibility of the file picker dialog
   @State private var showingFilePicker = false
+  /// Rotation duration for character animation (0 = no rotation)
+  @State private var rotationDuration: TimeInterval
 
   /// Initialize the view with file picker functionality
-  public init() {}
+  /// - Parameter rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
+  public init(rotationDuration: TimeInterval = 15.0) {
+    self._rotationDuration = State(initialValue: rotationDuration)
+  }
 
   public var body: some View {
     VStack {
@@ -95,7 +160,27 @@ public struct SkinRenderViewWithPicker: View {
         Spacer()
       }
 
-      SkinRenderView(texturePath: selectedTexturePath)
+      // Rotation speed control
+      HStack {
+        Text("Rotation Speed:")
+          .font(.caption)
+
+        Slider(value: $rotationDuration, in: 0...15, step: 1) {
+          Text("Rotation Duration")
+        }
+        .frame(width: 300)
+
+        Text(rotationDuration == 0 ? "Static" : String(format: "%.1fs", rotationDuration))
+          .font(.caption)
+          .foregroundColor(.secondary)
+          .frame(width: 50, alignment: .leading)
+      }
+      .padding(.horizontal)
+
+      SkinRenderView(
+        texturePath: selectedTexturePath,
+        rotationDuration: rotationDuration
+      )
     }
   }
 

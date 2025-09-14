@@ -38,7 +38,7 @@ public enum PlayerModel: String, CaseIterable {
   var armPositions: (left: SCNVector3, right: SCNVector3) {
     switch self {
     case .steve: return (SCNVector3(6, 6, 0), SCNVector3(-6, 6, 0))
-    case .alex: return (SCNVector3(5.5, 5.75, 0), SCNVector3(-5.5, 5.75, 0))
+    case .alex: return (SCNVector3(5.5, 6, 0), SCNVector3(-5.5, 6, 0))
     }
   }
 }
@@ -54,6 +54,9 @@ public class SceneKitCharacterViewController: NSViewController {
 
   // Player model type
   private var playerModel: PlayerModel = .steve
+
+  // Rotation animation settings
+  private var rotationDuration: TimeInterval = 15.0 // Duration for one full rotation in seconds
 
   // Character body part nodes
   private var characterGroup: SCNNode!
@@ -78,17 +81,39 @@ public class SceneKitCharacterViewController: NSViewController {
   private var modelTypeButton: NSButton!
 
   // Convenience initializer
-  public convenience init(texturePath: String, playerModel: PlayerModel = .steve) {
+  public convenience init(
+    texturePath: String,
+    playerModel: PlayerModel = .steve,
+    rotationDuration: TimeInterval = 15.0
+  ) {
     self.init()
     self.texturePath = texturePath
     self.playerModel = playerModel
+    self.rotationDuration = rotationDuration
     loadTexture()
   }
 
   // Convenience initializer with only model type
-  public convenience init(playerModel: PlayerModel) {
+  public convenience init(
+    playerModel: PlayerModel = .steve,
+    rotationDuration: TimeInterval = 15.0
+  ) {
     self.init()
     self.playerModel = playerModel
+    self.rotationDuration = rotationDuration
+  }
+
+  // Convenience initializer with NSImage texture
+  public convenience init(
+    skinImage: NSImage,
+    playerModel: PlayerModel = .steve,
+    rotationDuration: TimeInterval = 15.0
+  ) {
+    self.init()
+    self.skinImage = skinImage
+    self.playerModel = playerModel
+    self.rotationDuration = rotationDuration
+    // No need to call loadTexture() since we already have the image
   }
 
   public override func loadView() {
@@ -151,6 +176,26 @@ public class SceneKitCharacterViewController: NSViewController {
     }
   }
 
+  // Public method for updating texture with NSImage
+  public func updateTexture(image: NSImage) {
+    self.skinImage = image
+    self.texturePath = nil // Clear file path since we're using direct image
+
+    // Recreate character to apply new texture
+    characterGroup?.removeFromParentNode()
+    setupCharacter()
+  }
+
+  // Public method for updating rotation speed
+  public func updateRotationDuration(_ duration: TimeInterval) {
+    self.rotationDuration = duration
+
+    // Update the rotation animation if character is already created
+    if characterGroup != nil {
+      setupRotationAnimation()
+    }
+  }
+
   private func setupScene() {
     scene = SCNScene()
     scnView.scene = scene
@@ -172,11 +217,21 @@ public class SceneKitCharacterViewController: NSViewController {
     setupRenderingPriorities()
 
     // Add rotation animation
+    setupRotationAnimation()
+  }
+
+  private func setupRotationAnimation() {
+    // Remove any existing rotation animations
+    characterGroup.removeAllActions()
+
+    // Only add rotation if duration is positive
+    guard rotationDuration > 0 else { return }
+
     let rotationAction = SCNAction.rotateBy(
       x: 0,
       y: CGFloat.pi * 2,
       z: 0,
-      duration: 15.0
+      duration: rotationDuration
     )
     let repeatAction = SCNAction.repeatForever(rotationAction)
     characterGroup.runAction(repeatAction)
@@ -948,8 +1003,14 @@ extension SceneKitCharacterViewController {
 // MARK: - Usage Helper
 extension SceneKitCharacterViewController {
 
-  static func presentInNewWindow(playerModel: PlayerModel = .steve) {
-    let characterVC = SceneKitCharacterViewController(playerModel: playerModel)
+  static func presentInNewWindow(
+    playerModel: PlayerModel = .steve,
+    rotationDuration: TimeInterval = 15.0
+  ) {
+    let characterVC = SceneKitCharacterViewController(
+      playerModel: playerModel,
+      rotationDuration: rotationDuration
+    )
     let window = NSWindow(
       contentRect: NSRect(x: 300, y: 300, width: 800, height: 600),
       styleMask: [.titled, .closable, .resizable],
@@ -963,5 +1024,5 @@ extension SceneKitCharacterViewController {
 }
 
 #Preview {
-  SceneKitCharacterViewController()
+  SceneKitCharacterViewController(rotationDuration: 2)
 }
