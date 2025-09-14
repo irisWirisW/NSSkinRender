@@ -337,6 +337,17 @@ public class SceneKitCharacterViewController: NSViewController {
     }
   }
 
+  // Public method for updating player model
+  public func updatePlayerModel(_ model: PlayerModel) {
+    self.playerModel = model
+
+    // Recreate character to apply new model
+    if characterGroup != nil {
+      characterGroup?.removeFromParentNode()
+      setupCharacter()
+    }
+  }
+
   private func setupScene() {
     scene = SCNScene()
     scnView.scene = scene

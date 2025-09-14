@@ -20,6 +20,8 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
   let capeTexturePath: String?
   /// Optional NSImage for direct cape texture input
   let capeImage: NSImage?
+  /// Player model type (Steve/Alex)
+  let playerModel: PlayerModel
   /// Rotation duration for character animation (0 = no rotation)
   let rotationDuration: TimeInterval
   /// Background color for the 3D scene
@@ -29,13 +31,15 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
   /// - Parameters:
   ///   - texturePath: Path to the Minecraft skin texture file
   ///   - capeTexturePath: Optional path to the cape texture file
+  ///   - playerModel: Player model type (Steve/Alex)
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
-  public init(texturePath: String? = nil, capeTexturePath: String? = nil, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
+  public init(texturePath: String? = nil, capeTexturePath: String? = nil, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
     self.texturePath = texturePath
     self.skinImage = nil
     self.capeTexturePath = capeTexturePath
     self.capeImage = nil
+    self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
   }
@@ -44,13 +48,15 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
   /// - Parameters:
   ///   - skinImage: The NSImage containing the Minecraft skin texture
   ///   - capeImage: Optional NSImage containing the cape texture
+  ///   - playerModel: Player model type (Steve/Alex)
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
-  public init(skinImage: NSImage, capeImage: NSImage? = nil, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
+  public init(skinImage: NSImage, capeImage: NSImage? = nil, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
     self.texturePath = nil
     self.skinImage = skinImage
     self.capeTexturePath = nil
     self.capeImage = capeImage
+    self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
   }
@@ -59,13 +65,15 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
   /// - Parameters:
   ///   - texturePath: Path to the Minecraft skin texture file
   ///   - capeImage: NSImage containing the cape texture
+  ///   - playerModel: Player model type (Steve/Alex)
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
-  public init(texturePath: String? = nil, capeImage: NSImage, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
+  public init(texturePath: String? = nil, capeImage: NSImage, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
     self.texturePath = texturePath
     self.skinImage = nil
     self.capeTexturePath = nil
     self.capeImage = capeImage
+    self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
   }
@@ -78,6 +86,7 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
       return SceneKitCharacterViewController(
         skinImage: skinImage,
         capeImage: capeImage,
+        playerModel: playerModel,
         rotationDuration: rotationDuration,
         backgroundColor: backgroundColor
       )
@@ -85,12 +94,14 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
       return SceneKitCharacterViewController(
         texturePath: texturePath,
         capeTexturePath: capeTexturePath,
+        playerModel: playerModel,
         rotationDuration: rotationDuration,
         backgroundColor: backgroundColor
       )
     } else if let capeImage = capeImage {
       // Only cape image provided
       let controller = SceneKitCharacterViewController(
+        playerModel: playerModel,
         rotationDuration: rotationDuration,
         backgroundColor: backgroundColor
       )
@@ -98,6 +109,7 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
       return controller
     } else {
       return SceneKitCharacterViewController(
+        playerModel: playerModel,
         rotationDuration: rotationDuration,
         backgroundColor: backgroundColor
       )
@@ -112,6 +124,9 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
     _ nsViewController: SceneKitCharacterViewController,
     context: Context
   ) {
+    // Update player model
+    nsViewController.updatePlayerModel(playerModel)
+
     // Update texture when skinImage or texturePath changes
     if let skinImage = skinImage {
       nsViewController.updateTexture(image: skinImage)
@@ -148,6 +163,8 @@ public struct SkinRenderView: View {
   let capeTexturePath: String?
   /// Optional NSImage for direct cape texture input
   let capeImage: NSImage?
+  /// Player model type (Steve/Alex)
+  let playerModel: PlayerModel
   /// Rotation duration for character animation (0 = no rotation)
   let rotationDuration: TimeInterval
   /// Background color for the 3D scene
@@ -157,13 +174,15 @@ public struct SkinRenderView: View {
   /// - Parameters:
   ///   - texturePath: Path to the Minecraft skin texture file
   ///   - capeTexturePath: Optional path to the cape texture file
+  ///   - playerModel: Player model type (Steve/Alex)
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
-  public init(texturePath: String? = nil, capeTexturePath: String? = nil, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
+  public init(texturePath: String? = nil, capeTexturePath: String? = nil, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
     self.texturePath = texturePath
     self.skinImage = nil
     self.capeTexturePath = capeTexturePath
     self.capeImage = nil
+    self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
   }
@@ -172,13 +191,15 @@ public struct SkinRenderView: View {
   /// - Parameters:
   ///   - skinImage: The NSImage containing the Minecraft skin texture
   ///   - capeImage: Optional NSImage containing the cape texture
+  ///   - playerModel: Player model type (Steve/Alex)
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
-  public init(skinImage: NSImage, capeImage: NSImage? = nil, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
+  public init(skinImage: NSImage, capeImage: NSImage? = nil, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
     self.texturePath = nil
     self.skinImage = skinImage
     self.capeTexturePath = nil
     self.capeImage = capeImage
+    self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
   }
@@ -187,13 +208,15 @@ public struct SkinRenderView: View {
   /// - Parameters:
   ///   - texturePath: Path to the Minecraft skin texture file
   ///   - capeImage: NSImage containing the cape texture
+  ///   - playerModel: Player model type (Steve/Alex)
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
-  public init(texturePath: String? = nil, capeImage: NSImage, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
+  public init(texturePath: String? = nil, capeImage: NSImage, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
     self.texturePath = texturePath
     self.skinImage = nil
     self.capeTexturePath = nil
     self.capeImage = capeImage
+    self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
   }
@@ -203,6 +226,7 @@ public struct SkinRenderView: View {
       SceneKitCharacterViewRepresentable(
         skinImage: skinImage,
         capeImage: capeImage,
+        playerModel: playerModel,
         rotationDuration: rotationDuration,
         backgroundColor: backgroundColor
       )
@@ -211,6 +235,7 @@ public struct SkinRenderView: View {
       SceneKitCharacterViewRepresentable(
         texturePath: texturePath,
         capeTexturePath: capeTexturePath,
+        playerModel: playerModel,
         rotationDuration: rotationDuration,
         backgroundColor: backgroundColor
       )
