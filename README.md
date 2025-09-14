@@ -1,11 +1,12 @@
 # SkinRenderKit
 
-A Swift package for rendering Minecraft character skins in 3D using SceneKit and SwiftUI. This library provides easy-to-use SwiftUI views for displaying Minecraft character models with custom skin textures.
+A Swift package for rendering Minecraft character skins in 3D using SceneKit and SwiftUI. This library provides easy-to-use SwiftUI views for displaying Minecraft character models with custom skin textures, including support for capes and dynamic animations.
 
 ## Features
 
 - 🎮 3D Minecraft character rendering with SceneKit
 - 🖼️ Support for custom skin textures (PNG format)
+- 🧥 **Minecraft cape rendering with realistic thickness and animations**
 - 🎯 SwiftUI integration with native views
 - 📁 Built-in file picker for texture selection
 - 🔄 Dynamic texture updating
@@ -15,8 +16,11 @@ A Swift package for rendering Minecraft character skins in 3D using SceneKit and
 - ⚡ Direct NSImage texture support for in-memory images
 - 🎬 Configurable rotation speed with real-time controls
 - 🎨 Customizable background colors with interactive color picker
+- 🌪️ **Dynamic cape swaying animation with wind effects**
+- 🎪 **Outer layer visibility controls (hat, jacket, sleeves, pants)**
+- 🎭 **Real-time model switching between Steve and Alex formats**
 
-> **Note:** Supports both Steve format (classic 4-pixel wide arms) and Alex format (slim 3-pixel wide arms) skins with automatic format detection.
+> **Note:** Supports both Steve format (classic 4-pixel wide arms) and Alex format (slim 3-pixel wide arms) skins with automatic format detection. Also includes **Minecraft cape rendering** with realistic 3D thickness, proper texture mapping, and dynamic swaying animations.
 
 ## Requirements
 
@@ -31,7 +35,7 @@ A Swift package for rendering Minecraft character skins in 3D using SceneKit and
 Add SkinRenderKit to your project using Swift Package Manager:
 
 1. In Xcode, go to **File** → **Add Package Dependencies**
-2. Enter the repository URL: `https://github.com/your-username/SkinRenderKit.git`
+2. Enter the repository URL: `https://github.com/irisWirisW/NSSkinRender`
 3. Select the version or branch you want to use
 4. Add the package to your target
 
@@ -39,7 +43,7 @@ Or add it to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/your-username/SkinRenderKit.git", from: "1.0.0")
+    .package(url: "https://github.com/irisWirisW/NSSkinRender", from: "1.0.0")
 ]
 ```
 
@@ -68,9 +72,9 @@ struct ContentView: View {
 }
 ```
 
-### Custom Texture
+### Custom Texture with Cape Support
 
-Render a character with a custom skin texture:
+Render a character with a custom skin texture and cape:
 
 ```swift
 import SwiftUI
@@ -102,6 +106,14 @@ struct ContentView: View {
     }
 }
 ```
+
+**Cape Support:**
+The library automatically looks for a cape texture file named `cap.png` in your app bundle or package resources. If found, it will be rendered with:
+- Realistic 3D thickness (1.0 unit depth)
+- Proper attachment to character shoulders
+- Natural hanging physics simulation
+- Dynamic swaying animation
+- Interactive visibility controls
 
 ### Using NSImage Directly
 
@@ -175,7 +187,7 @@ struct ContentView: View {
 
 ### Advanced Usage with NSViewController
 
-For more control, you can use the underlying NSViewController directly:
+For more control, including cape and animation management, you can use the underlying NSViewController directly:
 
 ```swift
 import SwiftUI
@@ -206,9 +218,9 @@ struct ContentView: View {
 }
 ```
 
-### Programmatic Texture Updates
+### Cape and Animation Control
 
-You can also work with the view controller directly for dynamic updates:
+The NSViewController provides advanced controls for cape and character customization:
 
 ```swift
 import SkinRenderKit
@@ -219,10 +231,11 @@ class MyViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // Create the skin render view controller with custom rotation
+        // Create the skin render view controller with custom settings
         skinViewController = SceneKitCharacterViewController(
             playerModel: .alex,
-            rotationDuration: 8.0
+            rotationDuration: 8.0,
+            backgroundColor: .darkGray
         )
 
         // Add it as a child view controller
@@ -239,12 +252,20 @@ class MyViewController: NSViewController {
 
         // Change rotation speed dynamically
         skinViewController.updateRotationDuration(15.0)
+
+        // Update background color
+        skinViewController.updateBackgroundColor(.systemBlue)
     }
 
     @IBAction func toggleRotation(_ sender: Any) {
         // Toggle between rotating and static
         let currentDuration = skinViewController.rotationDuration
         skinViewController.updateRotationDuration(currentDuration > 0 ? 0.0 : 10.0)
+    }
+
+    @IBAction func toggleCapeAnimation(_ sender: Any) {
+        // Toggle cape swaying animation
+        skinViewController.toggleCapeAnimation(true) // or false to disable
     }
 }
 ```
@@ -309,7 +330,7 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
 
 ### SceneKitCharacterViewController
 
-The underlying NSViewController that handles 3D rendering.
+The underlying NSViewController that handles 3D rendering with comprehensive cape and animation support.
 
 ```swift
 public class SceneKitCharacterViewController: NSViewController {
@@ -317,27 +338,111 @@ public class SceneKitCharacterViewController: NSViewController {
     public convenience init(skinImage: NSImage, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray)
     public convenience init(playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray)
 
+    // Texture Management
     public func updateTexture(path: String)
     public func updateTexture(image: NSImage)
+
+    // Appearance Controls
     public func updateRotationDuration(_ duration: TimeInterval)
     public func updateBackgroundColor(_ color: NSColor)
+
+    // Cape Animation Control
+    public func toggleCapeAnimation(_ enabled: Bool)
+
+    // Built-in UI Controls (automatically added to view)
+    // - "Hide/Show Outer Layers" button
+    // - "Switch to Steve/Alex" button
+    // - "Hide/Show Cape" button
+    // - "Enable/Disable Animation" button
 }
 ```
+
+**Built-in Interactive Controls:**
+
+The view controller automatically includes UI buttons for:
+
+1. **Outer Layer Toggle** - Show/hide hat, jacket, sleeves, and pants
+2. **Model Type Switch** - Toggle between Steve and Alex (slim) models
+3. **Cape Visibility** - Show/hide the cape entirely
+4. **Cape Animation** - Enable/disable the swaying animation
 
 **Methods:**
 - `updateTexture(path:)`: Updates the character's skin texture with a new image file
 - `updateTexture(image:)`: Updates the character's skin texture with an NSImage
 - `updateRotationDuration(_:)`: Changes the rotation speed dynamically
+- `updateBackgroundColor(_:)`: Updates the 3D scene background color
+- `toggleCapeAnimation(_:)`: Controls the cape swaying animation
 
 ## Supported Texture Formats
 
+### Skin Textures
 - PNG (recommended)
 - JPEG
 - Standard Minecraft skin format (64x64 or 64x32 pixels)
 
-> **Important:** This library supports both **Steve format** skins (classic 4-pixel wide arms) and **Alex format** skins (slim 3-pixel wide arms) with automatic format detection and proper rendering.
+### Cape Textures
+- PNG format (recommended for transparency support)
+- Standard Minecraft cape format (64x32 pixels)
+- Texture file should be named `cap.png` and placed in your app bundle or package resources
+- Supports transparency for realistic cloth effects
 
-## Roadmap & TODO
+**Cape Texture Mapping:**
+The cape texture follows Minecraft's standard 64x32 pixel format:
+- Back (outer) surface: x=1, y=1, width=10, height=16
+- Front (inner) surface: x=11, y=1, width=10, height=16
+- Side edges: x=0,21, y=1, width=1, height=16
+- Top/bottom edges: x=1,11, y=0, width=10, height=1
+
+> **Important:** This library supports both **Steve format** skins (classic 4-pixel wide arms) and **Alex format** skins (slim 3-pixel wide arms) with automatic format detection and proper rendering. **Cape rendering** includes realistic 3D thickness, proper shoulder attachment, and dynamic swaying animations.
+
+## Cape System Details
+
+### Cape Features
+
+The cape system provides a comprehensive implementation of Minecraft-style capes with the following features:
+
+**🏗️ Realistic 3D Structure**
+- **Proper Thickness**: 1.0 unit depth (not a flat plane) for authentic appearance
+- **Pivot-Based Attachment**: Cape hangs from a shoulder-level pivot point for natural physics
+- **Dual-Node System**: Separate pivot and cape nodes for precise positioning control
+
+**🎨 Enhanced Visual Quality**
+- **Phong Lighting Model**: Realistic cloth-like material appearance with subtle shininess
+- **Double-Sided Rendering**: Visible from both front and back for complete immersion
+- **Transparency Support**: Automatic detection and handling of transparent cape designs
+- **Anti-Z-Fighting**: Proper depth separation from character body
+
+**🌪️ Dynamic Animation System**
+- **Natural Swaying**: Smooth back-and-forth motion simulating wind effects
+- **Multi-Axis Movement**: Combined X and Z rotation for realistic cloth behavior
+- **Configurable Speed**: ~6.5 second cycle with smooth easing transitions
+- **Interactive Control**: Real-time animation enable/disable via UI button
+
+**⚙️ Technical Implementation**
+- **Efficient Geometry**: SCNBox-based with optimized material mapping
+- **Memory Optimized**: Single geometry instance with shared materials
+- **Performance Conscious**: Minimal impact on frame rate even with animation
+- **SceneKit Integration**: Full compatibility with scene lighting and camera controls
+
+### Cape Texture Requirements
+
+```
+Cape Texture Format (64x32 pixels):
+┌─────────────────────────────────┐
+│  Top   │ Top    │               │  y=0
+├────────┼────────┼───────────────┤
+│ Left   │ Front  │ Right │ Back  │  y=1-16
+│ Edge   │(Inner) │ Edge  │(Outer)│
+│ x=0    │ x=1-10 │x=11   │x=12-21│
+│ w=1    │ w=10   │ w=1   │ w=10  │
+└────────┴────────┴───────┴───────┘
+```
+
+**Best Practices:**
+- Use PNG format for transparency support
+- Follow Minecraft's standard cape dimensions (10x16 game units)
+- Design with back surface as the primary visible area
+- Consider transparency for flowing or torn cape effects## Roadmap & TODO
 
 ### ✅ Completed
 - [x] SwiftUI-based skin rendering with SceneKit integration
@@ -349,13 +454,22 @@ public class SceneKitCharacterViewController: NSViewController {
 - [x] Configurable rotation speed with real-time controls
 - [x] Direct NSImage texture support for in-memory images
 - [x] Dynamic rotation speed adjustment during runtime
+- [x] **Complete cape rendering system with 3D thickness**
+- [x] **Realistic cape physics with pivot-based attachment**
+- [x] **Dynamic cape swaying animation with wind effects**
+- [x] **Interactive UI controls for cape and outer layer visibility**
+- [x] **Real-time model switching between Steve and Alex formats**
+- [x] **Enhanced material system with Phong lighting for realistic appearance**
 
 ### 🚧 In Progress / Planned
 - [ ] **AppKit integration** - Native AppKit views and controls for non-SwiftUI applications
 - [ ] **Enhanced texture validation** - Better error handling and format detection
 - [ ] **Performance optimizations** - Improved rendering performance for multiple models
-- [ ] **Animation support** - Character animations and poses
+- [ ] **Advanced animation support** - Character poses, walking animations, arm movements
 - [ ] **Custom model variants** - Support for different character model variations
+- [ ] **Physics-based cape simulation** - More realistic cloth physics with wind interaction
+- [ ] **Multiple cape texture support** - Runtime cape texture switching
+- [ ] **Accessory system** - Support for additional character accessories (hats, items, etc.)
 
 ## License
 

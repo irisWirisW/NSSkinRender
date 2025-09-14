@@ -52,6 +52,10 @@ public class SceneKitCharacterViewController: NSViewController {
   private var texturePath: String?
   private var skinImage: NSImage?
 
+  // Cape texture support
+  private var capeTexturePath: String?
+  private var capeImage: NSImage?
+
   // Player model type
   private var playerModel: PlayerModel = .steve
 
@@ -75,10 +79,18 @@ public class SceneKitCharacterViewController: NSViewController {
   private var rightLegSleeveNode: SCNNode!
   private var leftLegNode: SCNNode!
   private var leftLegSleeveNode: SCNNode!
+  private var capeNode: SCNNode!
+  private var capePivotNode: SCNNode! // Pivot for cape rotation/attachment
 
   // Outer layer display control
   private var showOuterLayers: Bool = true
   private var toggleButton: NSButton!
+
+  // Cape display control
+  private var showCape: Bool = true
+  private var capeToggleButton: NSButton!
+  private var capeAnimationEnabled: Bool = true
+  private var capeAnimationButton: NSButton!
 
   // Model type control
   private var modelTypeButton: NSButton!
@@ -96,6 +108,26 @@ public class SceneKitCharacterViewController: NSViewController {
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
     loadTexture()
+  }
+
+  // Convenience initializer with cape texture path
+  public convenience init(
+    texturePath: String,
+    capeTexturePath: String? = nil,
+    playerModel: PlayerModel = .steve,
+    rotationDuration: TimeInterval = 15.0,
+    backgroundColor: NSColor = .gray
+  ) {
+    self.init()
+    self.texturePath = texturePath
+    self.capeTexturePath = capeTexturePath
+    self.playerModel = playerModel
+    self.rotationDuration = rotationDuration
+    self.backgroundColor = backgroundColor
+    loadTexture()
+    if let capeTexturePath = capeTexturePath {
+      loadCapeTexture(from: capeTexturePath)
+    }
   }
 
   // Convenience initializer with only model type
@@ -123,6 +155,42 @@ public class SceneKitCharacterViewController: NSViewController {
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
     // No need to call loadTexture() since we already have the image
+  }
+
+  // Convenience initializer with NSImage textures including cape
+  public convenience init(
+    skinImage: NSImage,
+    capeImage: NSImage? = nil,
+    playerModel: PlayerModel = .steve,
+    rotationDuration: TimeInterval = 15.0,
+    backgroundColor: NSColor = .gray
+  ) {
+    self.init()
+    self.skinImage = skinImage
+    self.capeImage = capeImage
+    self.playerModel = playerModel
+    self.rotationDuration = rotationDuration
+    self.backgroundColor = backgroundColor
+    // No need to call loadTexture() since we already have the images
+  }
+
+  // Convenience initializer with mixed texture inputs
+  public convenience init(
+    texturePath: String? = nil,
+    capeImage: NSImage,
+    playerModel: PlayerModel = .steve,
+    rotationDuration: TimeInterval = 15.0,
+    backgroundColor: NSColor = .gray
+  ) {
+    self.init()
+    self.texturePath = texturePath
+    self.capeImage = capeImage
+    self.playerModel = playerModel
+    self.rotationDuration = rotationDuration
+    self.backgroundColor = backgroundColor
+    if let texturePath = texturePath {
+      loadTexture()
+    }
   }
 
   public override func loadView() {
@@ -156,6 +224,15 @@ public class SceneKitCharacterViewController: NSViewController {
     } else {
       print("Failed to load texture from path: \(texturePath)")
       loadDefaultTexture()
+    }
+  }
+
+  private func loadCapeTexture(from path: String) {
+    if let image = NSImage(contentsOfFile: path) {
+      self.capeImage = image
+      print("✅ Cape texture loaded from: \(path)")
+    } else {
+      print("⚠️ Failed to load cape texture from path: \(path)")
     }
   }
 
@@ -211,6 +288,42 @@ public class SceneKitCharacterViewController: NSViewController {
     scnView?.backgroundColor = color
   }
 
+  // Public method for updating cape texture with file path
+  public func updateCapeTexture(path: String) {
+    self.capeTexturePath = path
+    loadCapeTexture(from: path)
+
+    // Recreate character to apply new cape texture
+    if characterGroup != nil {
+      characterGroup?.removeFromParentNode()
+      setupCharacter()
+    }
+  }
+
+  // Public method for updating cape texture with NSImage
+  public func updateCapeTexture(image: NSImage) {
+    self.capeImage = image
+    self.capeTexturePath = nil // Clear file path since we're using direct image
+
+    // Recreate character to apply new cape texture
+    if characterGroup != nil {
+      characterGroup?.removeFromParentNode()
+      setupCharacter()
+    }
+  }
+
+  // Public method for removing cape texture
+  public func removeCapeTexture() {
+    self.capeImage = nil
+    self.capeTexturePath = nil
+
+    // Recreate character without cape
+    if characterGroup != nil {
+      characterGroup?.removeFromParentNode()
+      setupCharacter()
+    }
+  }
+
   private func setupScene() {
     scene = SCNScene()
     scnView.scene = scene
@@ -227,6 +340,7 @@ public class SceneKitCharacterViewController: NSViewController {
     createBody()
     createArms()
     createLegs()
+    createCape()
 
     // Set rendering priorities and depth offsets
     setupRenderingPriorities()
@@ -298,6 +412,26 @@ public class SceneKitCharacterViewController: NSViewController {
     modelTypeButton.autoresizingMask = [.maxXMargin, .maxYMargin]
 
     view.addSubview(modelTypeButton)
+
+    // Create button to toggle cape
+    capeToggleButton = NSButton(frame: NSRect(x: 20, y: 100, width: 130, height: 30))
+    capeToggleButton.title = showCape ? "Hide Cape" : "Show Cape"
+    capeToggleButton.bezelStyle = .rounded
+    capeToggleButton.target = self
+    capeToggleButton.action = #selector(toggleCape)
+    capeToggleButton.autoresizingMask = [.maxXMargin, .maxYMargin]
+
+    view.addSubview(capeToggleButton)
+
+    // Create button to toggle cape animation
+    capeAnimationButton = NSButton(frame: NSRect(x: 20, y: 140, width: 130, height: 30))
+    capeAnimationButton.title = capeAnimationEnabled ? "Disable Animation" : "Enable Animation"
+    capeAnimationButton.bezelStyle = .rounded
+    capeAnimationButton.target = self
+    capeAnimationButton.action = #selector(toggleCapeAnimationAction)
+    capeAnimationButton.autoresizingMask = [.maxXMargin, .maxYMargin]
+
+    view.addSubview(capeAnimationButton)
   }
 
   @objc private func toggleOuterLayers() {
@@ -315,6 +449,26 @@ public class SceneKitCharacterViewController: NSViewController {
       showOuterLayers ? "Hide Outer Layers" : "Show Outer Layers"
 
     print("Outer layers visibility: \(showOuterLayers ? "shown" : "hidden")")
+  }
+
+  @objc private func toggleCape() {
+    showCape.toggle()
+
+    // Toggle cape visibility
+    capePivotNode?.isHidden = !showCape
+
+    capeToggleButton.title = showCape ? "Hide Cape" : "Show Cape"
+
+    print("Cape visibility: \(showCape ? "shown" : "hidden")")
+  }
+
+  @objc private func toggleCapeAnimationAction() {
+    capeAnimationEnabled.toggle()
+    toggleCapeAnimation(capeAnimationEnabled)
+
+    capeAnimationButton.title = capeAnimationEnabled ? "Disable Animation" : "Enable Animation"
+
+    print("Cape animation: \(capeAnimationEnabled ? "enabled" : "disabled")")
   }
 
   @objc private func switchModelType() {
@@ -550,6 +704,72 @@ extension SceneKitCharacterViewController {
     )
   }
 
+  private func createCapeMaterials(from capeImage: NSImage) -> [SCNMaterial] {
+    // Cape texture coordinates based on Minecraft cape texture (64x32 pixels)
+    // Standard Minecraft cape mapping with proper thickness support:
+    // - Front (inner side): x=11, y=1, width=10, height=16
+    // - Back (outer side): x=1, y=1, width=10, height=16 (main visible surface)
+    // - Right/Left edges: narrow strips for thickness
+    // - Top/Bottom: horizontal strips
+    let capeRects: [CGRect] = [
+      CGRect(x: 11, y: 1, width: 10, height: 16),  // front (inner side)
+      CGRect(x: 21, y: 1, width: 1, height: 16),   // right edge
+      CGRect(x: 1, y: 1, width: 10, height: 16),   // back (outer side) - main visible surface
+      CGRect(x: 0, y: 1, width: 1, height: 16),    // left edge
+      CGRect(x: 1, y: 0, width: 10, height: 1),    // top edge
+      CGRect(x: 11, y: 0, width: 10, height: 1),   // bottom edge
+    ]
+
+    var materials: [SCNMaterial] = []
+    let faceNames = ["front", "right", "back", "left", "top", "bottom"]
+
+    for (index, rect) in capeRects.enumerated() {
+      let material = SCNMaterial()
+
+      if let croppedImage = cropImage(capeImage, rect: rect, layerName: "cape") {
+        material.diffuse.contents = croppedImage
+        material.diffuse.magnificationFilter = .nearest
+        material.diffuse.minificationFilter = .nearest
+        material.diffuse.wrapS = .clamp
+        material.diffuse.wrapT = .clamp
+
+        // Enhanced material properties for realistic cape appearance
+        if hasTransparentPixels(croppedImage) {
+          material.transparency = 1.0
+          material.blendMode = .alpha
+        } else {
+          material.transparency = 1.0  // Fully opaque for solid cape
+          material.blendMode = .alpha
+        }
+
+        // Cape should be double-sided for realistic cloth appearance
+        material.isDoubleSided = true
+
+        // Use Phong lighting for better visual depth
+        material.lightingModel = .phong
+        material.shininess = 0.1  // Low shininess for cloth-like appearance
+
+        // Add subtle ambient and diffuse properties
+        material.ambient.contents = NSColor.black.withAlphaComponent(0.2)
+        material.specular.contents = NSColor.white.withAlphaComponent(0.1)
+
+        print("✅ Created enhanced cape material for \(faceNames[index])")
+      } else {
+        // Fallback material with improved properties
+        material.diffuse.contents = NSColor.red.withAlphaComponent(0.8)
+        material.transparency = 0.8
+        material.blendMode = .alpha
+        material.isDoubleSided = true
+        material.lightingModel = .phong
+        print("⚠️ Using fallback material for cape \(faceNames[index])")
+      }
+
+      materials.append(material)
+    }
+
+    return materials
+  }
+
   // MARK: - General Material Creation Functions
 
   private func createMaterials(
@@ -768,22 +988,11 @@ extension SceneKitCharacterViewController {
     rightLegSleeveNode?.renderingOrder = 210
     leftLegSleeveNode?.renderingOrder = 210
 
-    // Set depth bias for all geometries to further reduce Z-fighting
-    setDepthBias(for: bodyNode, bias: 0.0)
-    setDepthBias(for: headNode, bias: 0.0)
-    setDepthBias(for: rightArmNode, bias: -0.001)  // Negative value makes arms slightly forward
-    setDepthBias(for: leftArmNode, bias: -0.001)
-    setDepthBias(for: rightLegNode, bias: -0.001)
-    setDepthBias(for: leftLegNode, bias: -0.001)
+    // Cape has special priority - should be behind body but visible
+    capePivotNode?.renderingOrder = 150
 
-    // Outer layers set with larger forward offset
-    setDepthBias(for: hatNode, bias: -0.002)
-    setDepthBias(for: jacketNode, bias: -0.002)
-    setDepthBias(for: rightArmSleeveNode, bias: -0.003)
-    setDepthBias(for: leftArmSleeveNode, bias: -0.003)
-    setDepthBias(for: rightLegSleeveNode, bias: -0.003)
-    setDepthBias(for: leftLegSleeveNode, bias: -0.003)
-
+    // Remove cape depth bias; pivot positioning handles separation
+    // (Removed) setDepthBias(for: capeNode, bias: 0.002)
     print("✅ Rendering priorities and depth bias configured")
   }
 
@@ -1013,6 +1222,145 @@ extension SceneKitCharacterViewController {
     leftLegSleeveNode.position = SCNVector3(2, -6, 0)
     characterGroup.addChildNode(leftLegSleeveNode)
   }
+
+  private func createCape() {
+    // Try to load cape texture - prioritize custom textures over default
+    var capeTextureImage: NSImage?
+
+    // First priority: Use custom cape image if provided
+    if let customCapeImage = capeImage {
+      capeTextureImage = customCapeImage
+      print("✅ Using custom cape NSImage texture")
+    }
+    // Second priority: Use custom cape texture path if provided
+    else if let customCapeTexturePath = capeTexturePath {
+      if let image = NSImage(contentsOfFile: customCapeTexturePath) {
+        capeTextureImage = image
+        print("✅ Using custom cape texture from: \(customCapeTexturePath)")
+      } else {
+        print("⚠️ Failed to load custom cape texture from: \(customCapeTexturePath)")
+      }
+    }
+
+    // Third priority: Try to load default cape from bundle resources
+    if capeTextureImage == nil {
+      if let resourceURL = Bundle.module.url(forResource: "cap", withExtension: "png"),
+         let image = NSImage(contentsOf: resourceURL) {
+        capeTextureImage = image
+        print("✅ Using default cape texture from bundle")
+      } else {
+        capeTextureImage = NSImage(named: "cap")
+        if capeTextureImage != nil {
+          print("✅ Using default cape texture from app bundle")
+        }
+      }
+    }
+
+    guard let cape = capeTextureImage else {
+      print("⚠️ No cape texture available - skipping cape creation")
+      return
+    }
+
+    // Pivot node: represents attachment point at upper back (shoulder line)
+    // Body top is y=12, shoulder visually ~ y=11. We'll place pivot at y=11.
+    capePivotNode = SCNNode()
+    capePivotNode.name = "CapePivot"
+    // With 1.0 thickness, we need more clearance. Body half-length=2, so -2.5 gives good separation
+    capePivotNode.position = SCNVector3(0, 11, -2.5) // Behind body with clearance for thickness
+
+    // Cape geometry: width 10, height 16, realistic thickness like official Minecraft
+    // Official cape has visible thickness when viewed from side - approximately 1 unit
+    let capeGeometry = SCNBox(width: 10, height: 16, length: 1.0, chamferRadius: 0)
+    capeGeometry.materials = createCapeMaterials(from: cape)
+
+    // Cape node: positioned so its top edge aligns with pivot (pivot acts like hinge)
+    capeNode = SCNNode(geometry: capeGeometry)
+    capeNode.name = "Cape"
+    // SCNBox is centered on its node; to hang from top we shift it downward by half its height
+    capeNode.position = SCNVector3(0, -8, 0) // half of 16
+
+    // Apply slight backward tilt on pivot (not on cape itself) so rotation hinge feels natural
+    capePivotNode.eulerAngles = SCNVector3(Float.pi / 14, 0, 0) // ~12.8° backward
+
+    // Visibility controlled on pivot (affects entire cape assembly)
+    capePivotNode.isHidden = !showCape
+
+    // Build hierarchy
+    capePivotNode.addChildNode(capeNode)
+    characterGroup.addChildNode(capePivotNode)
+
+    // Add subtle swaying animation to make cape more dynamic
+    addCapeSwayAnimation()
+
+    print("✅ Cape created with pivot and animation. Pivot pos: \(capePivotNode.position), cape local pos: \(capeNode.position)")
+  }
+
+  // MARK: - Cape Animation
+  private func addCapeSwayAnimation() {
+    guard let capePivotNode = capePivotNode else { return }
+
+    // Create subtle swaying motion like wind effect
+    let baseRotationX = Float.pi / 14  // Base backward tilt (~12.8°)
+    let swayAmplitude: Float = Float.pi / 24  // ~7.5° sway range
+
+    // Animation sequence: sway left, center, right, center
+    let rotateLeft = SCNAction.rotateTo(
+      x: CGFloat(baseRotationX + swayAmplitude),
+      y: 0,
+      z: CGFloat(Float.pi / 40),  // Slight side rotation
+      duration: 2.0
+    )
+
+    let rotateCenter = SCNAction.rotateTo(
+      x: CGFloat(baseRotationX),
+      y: 0,
+      z: 0,
+      duration: 1.5
+    )
+
+    let rotateRight = SCNAction.rotateTo(
+      x: CGFloat(baseRotationX + swayAmplitude),
+      y: 0,
+      z: CGFloat(-Float.pi / 40),  // Slight side rotation opposite
+      duration: 2.0
+    )
+
+    // Smooth easing for natural movement
+    rotateLeft.timingMode = .easeInEaseOut
+    rotateCenter.timingMode = .easeInEaseOut
+    rotateRight.timingMode = .easeInEaseOut
+
+    // Create animation sequence
+    let swaySequence = SCNAction.sequence([
+      rotateLeft,
+      rotateCenter,
+      rotateRight,
+      rotateCenter
+    ])
+
+    // Repeat the sway animation forever
+    let repeatSway = SCNAction.repeatForever(swaySequence)
+
+    capePivotNode.runAction(repeatSway, forKey: "capeSwayAnimation")
+
+    print("🌪️ Cape sway animation added")
+  }
+
+  // Public method to toggle cape animation
+  public func toggleCapeAnimation(_ enabled: Bool) {
+    guard let capePivotNode = capePivotNode else { return }
+
+    if enabled {
+      if capePivotNode.action(forKey: "capeSwayAnimation") == nil {
+        addCapeSwayAnimation()
+      }
+    } else {
+      capePivotNode.removeAction(forKey: "capeSwayAnimation")
+      // Reset to base rotation
+      capePivotNode.eulerAngles = SCNVector3(Float.pi / 14, 0, 0)
+      print("🔇 Cape animation disabled")
+    }
+  }
 }
 
 // MARK: - Usage Helper
@@ -1041,5 +1389,5 @@ extension SceneKitCharacterViewController {
 }
 
 #Preview {
-  SceneKitCharacterViewController(rotationDuration: 2)
+  SceneKitCharacterViewController(rotationDuration: 12)
 }
