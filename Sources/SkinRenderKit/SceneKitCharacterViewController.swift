@@ -603,7 +603,7 @@ public class SceneKitCharacterViewController: NSViewController {
     } else {
       stopWalkingAnimation()
     }
-    walkingAnimationButton.title = walkingAnimationEnabled ? "Stop Walking" : "Start Walking"
+    walkingAnimationButton?.title = walkingAnimationEnabled ? "Stop Walking" : "Start Walking"
     if capeAnimationEnabled { refreshCapeSwayAnimation() }
   }
 }
