@@ -68,6 +68,18 @@ public class SceneKitCharacterViewController: NSViewController {
   // UI control settings
   private var debugMode: Bool = true
 
+  // Limb bottom-face flip configuration
+  public enum LimbBottomFlipMode {
+    case none
+    case horizontal
+    case vertical
+    case both
+  }
+  public var limbBottomFlipMode: LimbBottomFlipMode = .horizontal
+  public var limbBottomRotate180: Bool = true
+  public var headBodyBottomFlipMode: LimbBottomFlipMode = .horizontal
+  public var headBodyBottomRotate180: Bool = true
+
   // Character body part nodes
   private var characterGroup: SCNNode!
   private var headNode: SCNNode!
@@ -262,7 +274,7 @@ public class SceneKitCharacterViewController: NSViewController {
 
   public override func loadView() {
     scnView = SCNView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
-    if debugMode {
+    if !debugMode {
       scnView.debugOptions = [
         .showBoundingBoxes,
         .showWireframe,
@@ -942,11 +954,37 @@ extension SceneKitCharacterViewController {
         let finalImage: NSImage
         if index == 5 {  // bottom face
           if isLimb {
-            // Limbs (arms and legs) bottom face doesn't need rotation
-            finalImage = croppedImage
+            // Limbs (arms and legs) bottom face: optional flip + rotation per configuration
+            let flipped: NSImage = {
+              switch limbBottomFlipMode {
+              case .none:
+                return croppedImage
+              case .horizontal:
+                return flipImageHorizontally(croppedImage) ?? croppedImage
+              case .vertical:
+                return flipImageVertically(croppedImage) ?? croppedImage
+              case .both:
+                let h = flipImageHorizontally(croppedImage) ?? croppedImage
+                return flipImageVertically(h) ?? h
+              }
+            }()
+            finalImage = limbBottomRotate180 ? (rotateImage(flipped, degrees: 180) ?? flipped) : flipped
           } else {
-            // Head and body bottom face needs 180 degree rotation
-            finalImage = rotateImage(croppedImage, degrees: 180) ?? croppedImage
+            // Head and body bottom face: optional flip + rotation per configuration
+            let flipped: NSImage = {
+              switch headBodyBottomFlipMode {
+              case .none:
+                return croppedImage
+              case .horizontal:
+                return flipImageHorizontally(croppedImage) ?? croppedImage
+              case .vertical:
+                return flipImageVertically(croppedImage) ?? croppedImage
+              case .both:
+                let h = flipImageHorizontally(croppedImage) ?? croppedImage
+                return flipImageVertically(h) ?? h
+              }
+            }()
+            finalImage = headBodyBottomRotate180 ? (rotateImage(flipped, degrees: 180) ?? flipped) : flipped
           }
         } else {
           finalImage = croppedImage
@@ -1075,6 +1113,42 @@ extension SceneKitCharacterViewController {
 
     newImage.unlockFocus()
 
+    return newImage
+  }
+
+  private func flipImageHorizontally(_ image: NSImage) -> NSImage? {
+    let size = image.size
+    let newImage = NSImage(size: size)
+    newImage.lockFocus()
+    if let context = NSGraphicsContext.current {
+      context.imageInterpolation = .none
+      context.shouldAntialias = false
+      context.cgContext.interpolationQuality = .none
+    }
+    let transform = NSAffineTransform()
+    transform.translateX(by: size.width, yBy: 0)
+    transform.scaleX(by: -1, yBy: 1)
+    transform.concat()
+    image.draw(at: .zero, from: NSRect(origin: .zero, size: size), operation: .copy, fraction: 1.0)
+    newImage.unlockFocus()
+    return newImage
+  }
+
+  private func flipImageVertically(_ image: NSImage) -> NSImage? {
+    let size = image.size
+    let newImage = NSImage(size: size)
+    newImage.lockFocus()
+    if let context = NSGraphicsContext.current {
+      context.imageInterpolation = .none
+      context.shouldAntialias = false
+      context.cgContext.interpolationQuality = .none
+    }
+    let transform = NSAffineTransform()
+    transform.translateX(by: 0, yBy: size.height)
+    transform.scaleX(by: 1, yBy: -1)
+    transform.concat()
+    image.draw(at: .zero, from: NSRect(origin: .zero, size: size), operation: .copy, fraction: 1.0)
+    newImage.unlockFocus()
     return newImage
   }
 
