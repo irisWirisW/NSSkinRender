@@ -858,10 +858,10 @@ extension SceneKitCharacterViewController {
     // - Right/Left edges: narrow strips for thickness
     // - Top/Bottom: horizontal strips
     let capeRects: [CGRect] = [
-      CGRect(x: 11, y: 1, width: 10, height: 16),   // front (inner side)
-      CGRect(x: 21, y: 1, width:  1, height: 16),   // right edge
+      CGRect(x: 12, y: 1, width: 10, height: 16),   // front (inner side)
+      CGRect(x:  0, y: 1, width:  1, height: 16),   // right edge
       CGRect(x:  1, y: 1, width: 10, height: 16),   // back (outer side) - main visible surface
-      CGRect(x:  0, y: 1, width:  1, height: 16),   // left edge
+      CGRect(x: 11, y: 1, width:  1, height: 16),   // left edge
       CGRect(x:  1, y: 0, width: 10, height:  1),   // top edge
       CGRect(x: 11, y: 0, width: 10, height:  1),   // bottom edge
     ]
@@ -873,7 +873,9 @@ extension SceneKitCharacterViewController {
       let material = SCNMaterial()
 
       if let croppedImage = cropImage(capeImage, rect: rect, layerName: "cape") {
-        material.diffuse.contents = croppedImage
+        // Check if this is the bottom face (index 5) and rotate 180 degrees if needed
+        let finalImage = (index == 5) ? rotateImage(croppedImage, degrees: 180) ?? croppedImage : croppedImage
+        material.diffuse.contents = finalImage
         material.diffuse.magnificationFilter = .nearest
         material.diffuse.minificationFilter = .nearest
         material.diffuse.wrapS = .clamp
@@ -1047,6 +1049,13 @@ extension SceneKitCharacterViewController {
 
     let newImage = NSImage(size: newSize)
     newImage.lockFocus()
+
+    // Disable interpolation/antialiasing to preserve pixel-perfect rendering
+    if let context = NSGraphicsContext.current {
+      context.imageInterpolation = .none
+      context.shouldAntialias = false
+      context.cgContext.interpolationQuality = .none
+    }
 
     let transform = NSAffineTransform()
     transform.translateX(by: newSize.width / 2, yBy: newSize.height / 2)
