@@ -66,7 +66,7 @@ public class SceneKitCharacterViewController: NSViewController {
   private var backgroundColor: NSColor = .gray
 
   // UI control settings
-  private var debugMode: Bool = true
+  private var debugMode: Bool = false
 
   // Limb bottom-face flip configuration
   public enum LimbBottomFlipMode {
@@ -168,14 +168,14 @@ public class SceneKitCharacterViewController: NSViewController {
     playerModel: PlayerModel = .steve,
     rotationDuration: TimeInterval = 15.0,
     backgroundColor: NSColor = .gray,
-    showButtons: Bool = true
+    debugMode: Bool = false
   ) {
     self.init()
     self.texturePath = texturePath
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
-    self.debugMode = showButtons
+    self.debugMode = debugMode
     loadTexture()
   }
 
@@ -186,7 +186,7 @@ public class SceneKitCharacterViewController: NSViewController {
     playerModel: PlayerModel = .steve,
     rotationDuration: TimeInterval = 15.0,
     backgroundColor: NSColor = .gray,
-    showButtons: Bool = true
+    debugMode: Bool = false
   ) {
     self.init()
     self.texturePath = texturePath
@@ -194,7 +194,7 @@ public class SceneKitCharacterViewController: NSViewController {
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
-    self.debugMode = showButtons
+    self.debugMode = debugMode
     loadTexture()
     if let capeTexturePath = capeTexturePath {
       loadCapeTexture(from: capeTexturePath)
@@ -206,13 +206,13 @@ public class SceneKitCharacterViewController: NSViewController {
     playerModel: PlayerModel = .steve,
     rotationDuration: TimeInterval = 15.0,
     backgroundColor: NSColor = .gray,
-    showButtons: Bool = true
+    debugMode: Bool = false
   ) {
     self.init()
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
-    self.debugMode = showButtons
+    self.debugMode = debugMode
   }
 
   // Convenience initializer with NSImage texture
@@ -221,14 +221,14 @@ public class SceneKitCharacterViewController: NSViewController {
     playerModel: PlayerModel = .steve,
     rotationDuration: TimeInterval = 15.0,
     backgroundColor: NSColor = .gray,
-    showButtons: Bool = true
+    debugMode: Bool = false
   ) {
     self.init()
     self.skinImage = skinImage
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
-    self.debugMode = showButtons
+    self.debugMode = debugMode
     // No need to call loadTexture() since we already have the image
   }
 
@@ -239,7 +239,7 @@ public class SceneKitCharacterViewController: NSViewController {
     playerModel: PlayerModel = .steve,
     rotationDuration: TimeInterval = 15.0,
     backgroundColor: NSColor = .gray,
-    showButtons: Bool = true
+    debugMode: Bool = false
   ) {
     self.init()
     self.skinImage = skinImage
@@ -247,7 +247,7 @@ public class SceneKitCharacterViewController: NSViewController {
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
-    self.debugMode = showButtons
+    self.debugMode = debugMode
     // No need to call loadTexture() since we already have the images
   }
 
@@ -258,7 +258,7 @@ public class SceneKitCharacterViewController: NSViewController {
     playerModel: PlayerModel = .steve,
     rotationDuration: TimeInterval = 15.0,
     backgroundColor: NSColor = .gray,
-    showButtons: Bool = true
+    debugMode: Bool = false
   ) {
     self.init()
     self.texturePath = texturePath
@@ -266,7 +266,7 @@ public class SceneKitCharacterViewController: NSViewController {
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
-    self.debugMode = showButtons
+    self.debugMode = debugMode
     if let texturePath = texturePath {
       loadTexture()
     }
@@ -274,17 +274,17 @@ public class SceneKitCharacterViewController: NSViewController {
 
   public override func loadView() {
     scnView = SCNView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
-    if !debugMode {
-      scnView.debugOptions = [
-        .showBoundingBoxes,
-        .showWireframe,
-        .renderAsWireframe,
-        .showSkeletons,
-        .showPhysicsShapes,
-        .showCameras,
-        .showLightInfluences
-      ]
-    }
+    // if debugMode {
+    //   scnView.debugOptions = [
+    //     .showBoundingBoxes,
+    //     .showWireframe,
+    //     .renderAsWireframe,
+    //     .showSkeletons,
+    //     .showPhysicsShapes,
+    //     .showCameras,
+    //     .showLightInfluences
+    //   ]
+    // }
     self.view = scnView
   }
 
@@ -531,7 +531,7 @@ extension SceneKitCharacterViewController {
 
   // Public method for updating button visibility
   public func updateShowButtons(_ show: Bool) {
-    // Don't update if showButtons value hasn't changed
+    // Don't update if debugMode value hasn't changed
     guard self.debugMode != show else { return }
 
     self.debugMode = show

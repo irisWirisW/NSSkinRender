@@ -27,7 +27,7 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
   /// Background color for the 3D scene
   let backgroundColor: NSColor
   /// Whether to show control buttons (toggle layers, model type, etc.)
-  let showButtons: Bool
+  let debugMode: Bool
 
   /// Initialize the representable with an optional texture path
   /// - Parameters:
@@ -36,8 +36,8 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
   ///   - playerModel: Player model type (Steve/Alex)
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
-  ///   - showButtons: Whether to show control buttons (default: true)
-  public init(texturePath: String? = nil, capeTexturePath: String? = nil, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray, showButtons: Bool = true) {
+  ///   - debugMode: Whether to show control buttons (default: false)
+  public init(texturePath: String? = nil, capeTexturePath: String? = nil, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray, debugMode: Bool = false) {
     self.texturePath = texturePath
     self.skinImage = nil
     self.capeTexturePath = capeTexturePath
@@ -45,7 +45,7 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
-    self.showButtons = showButtons
+    self.debugMode = debugMode
   }
 
   /// Initialize the representable with a direct NSImage texture
@@ -55,8 +55,8 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
   ///   - playerModel: Player model type (Steve/Alex)
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
-  ///   - showButtons: Whether to show control buttons (default: true)
-  public init(skinImage: NSImage, capeImage: NSImage? = nil, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray, showButtons: Bool = true) {
+  ///   - debugMode: Whether to show control buttons (default: false)
+  public init(skinImage: NSImage, capeImage: NSImage? = nil, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray, debugMode: Bool = false) {
     self.texturePath = nil
     self.skinImage = skinImage
     self.capeTexturePath = nil
@@ -64,7 +64,7 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
-    self.showButtons = showButtons
+    self.debugMode = debugMode
   }
 
   /// Initialize the representable with mixed texture inputs
@@ -74,8 +74,8 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
   ///   - playerModel: Player model type (Steve/Alex)
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
-  ///   - showButtons: Whether to show control buttons (default: true)
-  public init(texturePath: String? = nil, capeImage: NSImage, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray, showButtons: Bool = true) {
+  ///   - debugMode: Whether to show control buttons (default: false)
+  public init(texturePath: String? = nil, capeImage: NSImage, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray, debugMode: Bool = false) {
     self.texturePath = texturePath
     self.skinImage = nil
     self.capeTexturePath = nil
@@ -83,7 +83,7 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
-    self.showButtons = showButtons
+    self.debugMode = debugMode
   }
 
   /// Create the underlying NSViewController for character rendering
@@ -97,7 +97,7 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
         playerModel: playerModel,
         rotationDuration: rotationDuration,
         backgroundColor: backgroundColor,
-        showButtons: showButtons
+        debugMode: debugMode
       )
     } else if let texturePath = texturePath {
       return SceneKitCharacterViewController(
@@ -106,7 +106,7 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
         playerModel: playerModel,
         rotationDuration: rotationDuration,
         backgroundColor: backgroundColor,
-        showButtons: showButtons
+        debugMode: debugMode
       )
     } else if let capeImage = capeImage {
       // Only cape image provided
@@ -114,7 +114,7 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
         playerModel: playerModel,
         rotationDuration: rotationDuration,
         backgroundColor: backgroundColor,
-        showButtons: showButtons
+        debugMode: debugMode
       )
       controller.updateCapeTexture(image: capeImage)
       return controller
@@ -123,7 +123,7 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
         playerModel: playerModel,
         rotationDuration: rotationDuration,
         backgroundColor: backgroundColor,
-        showButtons: showButtons
+        debugMode: debugMode
       )
     }
   }
@@ -140,7 +140,7 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
     nsViewController.updatePlayerModel(playerModel)
 
     // Update button visibility
-    nsViewController.updateShowButtons(showButtons)
+    nsViewController.updateShowButtons(debugMode)
 
     // Update texture when skinImage or texturePath changes
     if let skinImage = skinImage {
@@ -251,7 +251,7 @@ public struct SkinRenderView: View {
           playerModel: playerModel,
           rotationDuration: rotationDuration,
           backgroundColor: backgroundColor,
-          showButtons: false
+          debugMode: false
         )
       } else {
         SceneKitCharacterViewRepresentable(
@@ -260,7 +260,7 @@ public struct SkinRenderView: View {
           playerModel: playerModel,
           rotationDuration: rotationDuration,
           backgroundColor: backgroundColor,
-          showButtons: false
+          debugMode: false
         )
       }
     }
@@ -700,7 +700,7 @@ public struct SkinRenderDebug: View {
         capeTexturePath: selectedCapeTexturePath,
         rotationDuration: rotationDuration,
         backgroundColor: backgroundColor,
-        showButtons: true
+        debugMode: true
       )
       .frame(minWidth: 400, minHeight: 300)
     }
