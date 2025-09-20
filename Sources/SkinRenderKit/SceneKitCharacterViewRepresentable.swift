@@ -184,8 +184,12 @@ public struct SkinRenderView: View {
   let rotationDuration: TimeInterval
   /// Background color for the 3D scene
   let backgroundColor: NSColor
-  /// Drag and drop state
-  @State private var isDragOver: Bool = false
+  /// Drag and drop state - separate zones
+  @State private var isDragOverSkin: Bool = false
+  @State private var isDragOverCape: Bool = false
+  @State private var isDraggingAny: Bool = false
+  /// Drop feedback
+  @State private var dropError: String?
 
   /// Initialize the skin render view with an optional texture path
   /// - Parameters:
@@ -262,62 +266,318 @@ public struct SkinRenderView: View {
     }
     .frame(minWidth: 400, minHeight: 300)
     .overlay(
-      RoundedRectangle(cornerRadius: 12)
-        .stroke(isDragOver ? Color.blue : Color.clear, lineWidth: 3)
-        .background(
-          isDragOver ? Color.blue.opacity(0.1) : Color.clear,
-          in: RoundedRectangle(cornerRadius: 12)
-        )
-    )
-    .overlay(
-      isDragOver ?
-        VStack(spacing: 8) {
-          Image(systemName: "square.and.arrow.down")
-            .font(.system(size: 40))
-            .foregroundColor(.blue)
-          Text("Drop image file to update skin")
-            .font(.headline)
-            .foregroundColor(.blue)
-          Text("Supports PNG, JPEG format")
-            .font(.caption)
-            .foregroundColor(.secondary)
+      ZStack {
+        // Global outline when dragging over any zone
+        if isDraggingAny || isDragOverSkin || isDragOverCape {
+          RoundedRectangle(cornerRadius: 12)
+            .stroke(Color.accentColor, lineWidth: 3)
+            .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
         }
-        .padding()
-        .background(Color.white.opacity(0.9), in: RoundedRectangle(cornerRadius: 8))
-        .shadow(radius: 5)
-        : nil
+
+        // Two drop targets overlay (shown only while dragging)
+        if isDraggingAny || isDragOverSkin || isDragOverCape {
+          HStack(spacing: 16) {
+            DropTargetView(
+              title: "Skin (64x64)",
+              subtitle: "PNG / JPEG,64x64",
+              systemImage: "person.crop.square",
+              isActive: isDragOverSkin
+            )
+            .onDrop(of: [.fileURL, .png, .jpeg, .image], isTargeted: $isDragOverSkin) { providers in
+              return handleDrop(providers: providers, target: .skin)
+            }
+
+            DropTargetView(
+              title: "Cape",
+              subtitle: "PNG / JPEG,64x32",
+              systemImage: "flag.fill",
+              isActive: isDragOverCape
+            )
+            .onDrop(of: [.fileURL, .png, .jpeg, .image], isTargeted: $isDragOverCape) { providers in
+              return handleDrop(providers: providers, target: .cape)
+            }
+          }
+          .padding(24)
+        }
+
+        // Error banner
+        if let error = dropError {
+          VStack {
+            HStack(spacing: 8) {
+              Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(.white)
+              Text(error)
+                .foregroundColor(.white)
+                .font(.caption)
+            }
+            .padding(8)
+            .background(Color.red.opacity(0.9), in: Capsule())
+            Spacer()
+          }
+          .padding(.top, 12)
+        }
+      }
     )
-    .onDrop(of: [.fileURL], isTargeted: $isDragOver) { providers in
-      return handleDrop(providers: providers)
+    // Root-level drop as fallback: drop outside cards defaults to skin
+    .onDrop(of: [.fileURL, .png, .jpeg, .image], isTargeted: $isDraggingAny) { providers in
+      // If a specific zone captured it, this won't fire; as fallback, treat as skin
+      return handleDrop(providers: providers, target: .skin)
     }
   }
 
-  /// Handle file drop
-  private func handleDrop(providers: [NSItemProvider]) -> Bool {
-    guard let provider = providers.first else { return false }
+  // MARK: - Drag & Drop Helpers
 
-    provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { (item, error) in
-      guard let data = item as? Data,
-            let url = URL(dataRepresentation: data, relativeTo: nil) else {
-        return
-      }
+  private enum DropTarget { case skin, cape }
 
-      let allowedExtensions = ["png", "jpg", "jpeg"]
-      let fileExtension = url.pathExtension.lowercased()
+  /// Handle drop for specific target (skin or cape)
+  private func handleDrop(providers: [NSItemProvider], target: DropTarget) -> Bool {
+    guard let provider = providers.first else {
+      DispatchQueue.main.async { self.showDropError("No drag content detected") }
+      return false
+    }
 
-      guard allowedExtensions.contains(fileExtension) else {
-        return
-      }
+    print("🎯 Start to handle \(target == .skin ? "Skin" : "Cape") drag")
 
+    loadImage(from: provider) { image in
       DispatchQueue.main.async {
-        if let image = NSImage(contentsOf: url) {
-          self.skinImage = image
-          self.texturePath = nil
+        guard let image = image else {
+          self.showDropError("Failed to read image data, please check file format or permissions")
+          return
+        }
+
+        print("📐 Image size: \(image.size.width) × \(image.size.height)")
+
+        switch target {
+        case .skin:
+          if validateSkin(image) {
+            self.skinImage = image
+            self.texturePath = nil
+            print("✅ Skin updated successfully")
+          } else {
+            let size = image.size
+            self.showDropError("Skin size error: \(Int(size.width))×\(Int(size.height)), need 64x64 or 64x32 format")
+          }
+        case .cape:
+          if validateCape(image) {
+            self.capeImage = image
+            self.capeTexturePath = nil
+            print("✅ Cape updated successfully")
+          } else {
+            let size = image.size
+            self.showDropError("Cape size error: \(Int(size.width))×\(Int(size.height)), need 64x32 format")
+          }
         }
       }
     }
 
     return true
+  }
+
+  /// Try to load an NSImage from a single provider (file URL, PNG/JPEG data, or generic image)
+  private func loadImage(from provider: NSItemProvider, completion: @escaping (NSImage?) -> Void) {
+    // Debug: Print available type identifiers
+    print("🔍 Drag provider supported types: \(provider.registeredTypeIdentifiers)")
+
+    // Try to load NSImage object (for in-app drag)
+    if provider.canLoadObject(ofClass: NSImage.self) {
+      provider.loadObject(ofClass: NSImage.self) { object, error in
+        if let error = error {
+          print("❌ Failed to load NSImage object: \(error.localizedDescription)")
+        }
+        completion(object as? NSImage)
+      }
+      return
+    }
+
+    // 1) File URL path - fix processing logic
+    if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+      provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, error in
+        if let error = error {
+          print("❌ Failed to load file URL: \(error.localizedDescription)")
+          completion(nil)
+          return
+        }
+
+        var imageURL: URL?
+
+        // Try multiple URL retrieval methods
+        if let data = item as? Data {
+          imageURL = URL(dataRepresentation: data, relativeTo: nil)
+        } else if let url = item as? URL {
+          imageURL = url
+        } else if let nsUrl = item as? NSURL {
+          imageURL = nsUrl as URL
+        }
+
+        guard let url = imageURL else {
+          print("❌ Failed to extract URL from drag item")
+          completion(nil)
+          return
+        }
+
+        print("📁 Try to load image from file: \(url.path)")
+
+        // Check if file exists and is accessible
+        guard url.isFileURL, FileManager.default.fileExists(atPath: url.path) else {
+          print("❌ File does not exist or cannot be accessed: \(url.path)")
+          completion(nil)
+          return
+        }
+
+        let image = NSImage(contentsOf: url)
+        if image != nil {
+          print("✅ Successfully loaded image from file")
+        } else {
+          print("❌ NSImage cannot read file content")
+        }
+        completion(image)
+      }
+      return
+    }
+
+    // 2) PNG Data
+    if provider.hasItemConformingToTypeIdentifier(UTType.png.identifier) {
+      provider.loadItem(forTypeIdentifier: UTType.png.identifier, options: nil) { item, error in
+        if let error = error {
+          print("❌ Failed to load PNG data: \(error.localizedDescription)")
+          completion(nil)
+          return
+        }
+
+        if let data = item as? Data {
+          print("📊 PNG data size: \(data.count) bytes")
+          let image = NSImage(data: data)
+          if image != nil {
+            print("✅ Successfully created image from PNG data")
+          } else {
+            print("❌ PNG data is invalid")
+          }
+          completion(image)
+        } else {
+          print("❌ PNG item is not Data type")
+          completion(nil)
+        }
+      }
+      return
+    }
+
+    // 3) JPEG data
+    if provider.hasItemConformingToTypeIdentifier(UTType.jpeg.identifier) {
+      provider.loadItem(forTypeIdentifier: UTType.jpeg.identifier, options: nil) { item, error in
+        if let error = error {
+          print("❌ Failed to load JPEG data: \(error.localizedDescription)")
+          completion(nil)
+          return
+        }
+
+        if let data = item as? Data {
+          print("📊 JPEG data size: \(data.count) bytes")
+          let image = NSImage(data: data)
+          if image != nil {
+            print("✅ Successfully created image from JPEG data")
+          } else {
+            print("❌ JPEG data is invalid")
+          }
+          completion(image)
+        } else {
+          print("❌ JPEG item is not Data type")
+          completion(nil)
+        }
+      }
+      return
+    }
+
+    // 4) Generic image representation
+    if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+      provider.loadItem(forTypeIdentifier: UTType.image.identifier, options: nil) { item, error in
+        if let error = error {
+          print("❌ Failed to load generic image data: \(error.localizedDescription)")
+          completion(nil)
+          return
+        }
+
+        if let data = item as? Data {
+          print("📊 Generic image data size: \(data.count) bytes")
+          let image = NSImage(data: data)
+          if image != nil {
+            print("✅ Successfully created image from generic image data")
+          } else {
+            print("❌ Generic image data is invalid")
+          }
+          completion(image)
+        } else if let image = item as? NSImage {
+          print("✅ Directly obtained NSImage object")
+          completion(image)
+        } else {
+          print("❌ Generic image item type not supported: \(type(of: item))")
+          completion(nil)
+        }
+      }
+      return
+    }
+
+    print("❌ No supported image type found")
+    completion(nil)
+  }
+
+  private func validateSkin(_ image: NSImage) -> Bool {
+    guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return false }
+    let w = cg.width
+    let h = cg.height
+    // 64x64 (or exact square multiples) or legacy 64x32 in exact 2:1 multiples
+    if w == h && w % 64 == 0 { return true }           // e.g., 64x64, 128x128
+    if w % 64 == 0 && h * 2 == w { return true }       // e.g., 64x32, 128x64 (legacy style)
+    return false                                       // reject 2:1 mistaken exports as modern skins
+  }
+
+  private func validateCape(_ image: NSImage) -> Bool {
+    guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return false }
+    let w = cg.width
+    let h = cg.height
+    // Standard 64x32 or any exact 2:1 multiple (e.g., 128x64, 256x128)
+    return w == 2 * h && w % 64 == 0
+  }
+
+  private func showDropError(_ message: String) {
+    dropError = message
+    // Auto dismiss after short delay
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+      withAnimation { dropError = nil }
+    }
+  }
+}
+
+// MARK: - Drop Target Visual
+private struct DropTargetView: View {
+  let title: String
+  let subtitle: String
+  let systemImage: String
+  let isActive: Bool
+
+  var body: some View {
+    VStack(spacing: 8) {
+      Image(systemName: systemImage)
+        .font(.system(size: 36))
+        .foregroundColor(isActive ? .accentColor : .secondary)
+      Text(title)
+        .font(.headline)
+        .foregroundColor(isActive ? .accentColor : .primary)
+      Text(subtitle)
+        .font(.caption)
+        .foregroundColor(.secondary)
+    }
+    .padding(16)
+    .frame(minWidth: 180)
+    .background(
+      RoundedRectangle(cornerRadius: 10)
+        .fill(Color(NSColor.windowBackgroundColor).opacity(isActive ? 0.95 : 0.7))
+    )
+    .overlay(
+      RoundedRectangle(cornerRadius: 10)
+        .stroke(isActive ? Color.accentColor : Color.secondary.opacity(0.3), style: StrokeStyle(lineWidth: isActive ? 2 : 1, dash: isActive ? [] : [6]))
+    )
+    .shadow(color: Color.black.opacity(isActive ? 0.15 : 0.05), radius: isActive ? 10 : 4, x: 0, y: 2)
+    .contentShape(RoundedRectangle(cornerRadius: 10))
   }
 }
 
