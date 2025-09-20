@@ -171,19 +171,21 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
 /// Provides a simple interface for displaying character models with optional texture customization
 public struct SkinRenderView: View {
   /// Optional path to the texture file for the character skin
-  let texturePath: String?
+  @State private var texturePath: String?
   /// Optional NSImage for direct texture input
-  let skinImage: NSImage?
+  @State private var skinImage: NSImage?
   /// Optional path to the cape texture file
-  let capeTexturePath: String?
+  @State private var capeTexturePath: String?
   /// Optional NSImage for direct cape texture input
-  let capeImage: NSImage?
+  @State private var capeImage: NSImage?
   /// Player model type (Steve/Alex)
   let playerModel: PlayerModel
   /// Rotation duration for character animation (0 = no rotation)
   let rotationDuration: TimeInterval
   /// Background color for the 3D scene
   let backgroundColor: NSColor
+  /// Drag and drop state
+  @State private var isDragOver: Bool = false
 
   /// Initialize the skin render view with an optional texture path
   /// - Parameters:
@@ -193,10 +195,10 @@ public struct SkinRenderView: View {
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
   public init(texturePath: String? = nil, capeTexturePath: String? = nil, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
-    self.texturePath = texturePath
-    self.skinImage = nil
-    self.capeTexturePath = capeTexturePath
-    self.capeImage = nil
+    self._texturePath = State(initialValue: texturePath)
+    self._skinImage = State(initialValue: nil)
+    self._capeTexturePath = State(initialValue: capeTexturePath)
+    self._capeImage = State(initialValue: nil)
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
@@ -210,10 +212,10 @@ public struct SkinRenderView: View {
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
   public init(skinImage: NSImage, capeImage: NSImage? = nil, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
-    self.texturePath = nil
-    self.skinImage = skinImage
-    self.capeTexturePath = nil
-    self.capeImage = capeImage
+    self._texturePath = State(initialValue: nil)
+    self._skinImage = State(initialValue: skinImage)
+    self._capeTexturePath = State(initialValue: nil)
+    self._capeImage = State(initialValue: capeImage)
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
@@ -227,37 +229,95 @@ public struct SkinRenderView: View {
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
   public init(texturePath: String? = nil, capeImage: NSImage, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
-    self.texturePath = texturePath
-    self.skinImage = nil
-    self.capeTexturePath = nil
-    self.capeImage = capeImage
+    self._texturePath = State(initialValue: texturePath)
+    self._skinImage = State(initialValue: nil)
+    self._capeTexturePath = State(initialValue: nil)
+    self._capeImage = State(initialValue: capeImage)
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
   }
 
   public var body: some View {
-    if let skinImage = skinImage {
-      SceneKitCharacterViewRepresentable(
-        skinImage: skinImage,
-        capeImage: capeImage,
-        playerModel: playerModel,
-        rotationDuration: rotationDuration,
-        backgroundColor: backgroundColor,
-        showButtons: false
-      )
-      .frame(minWidth: 400, minHeight: 300)
-    } else {
-      SceneKitCharacterViewRepresentable(
-        texturePath: texturePath,
-        capeTexturePath: capeTexturePath,
-        playerModel: playerModel,
-        rotationDuration: rotationDuration,
-        backgroundColor: backgroundColor,
-        showButtons: false
-      )
-      .frame(minWidth: 400, minHeight: 300)
+    Group {
+      if let skinImage = skinImage {
+        SceneKitCharacterViewRepresentable(
+          skinImage: skinImage,
+          capeImage: capeImage,
+          playerModel: playerModel,
+          rotationDuration: rotationDuration,
+          backgroundColor: backgroundColor,
+          showButtons: false
+        )
+      } else {
+        SceneKitCharacterViewRepresentable(
+          texturePath: texturePath,
+          capeTexturePath: capeTexturePath,
+          playerModel: playerModel,
+          rotationDuration: rotationDuration,
+          backgroundColor: backgroundColor,
+          showButtons: false
+        )
+      }
     }
+    .frame(minWidth: 400, minHeight: 300)
+    .overlay(
+      RoundedRectangle(cornerRadius: 12)
+        .stroke(isDragOver ? Color.blue : Color.clear, lineWidth: 3)
+        .background(
+          isDragOver ? Color.blue.opacity(0.1) : Color.clear,
+          in: RoundedRectangle(cornerRadius: 12)
+        )
+    )
+    .overlay(
+      isDragOver ?
+        VStack(spacing: 8) {
+          Image(systemName: "square.and.arrow.down")
+            .font(.system(size: 40))
+            .foregroundColor(.blue)
+          Text("Drop image file to update skin")
+            .font(.headline)
+            .foregroundColor(.blue)
+          Text("Supports PNG, JPEG format")
+            .font(.caption)
+            .foregroundColor(.secondary)
+        }
+        .padding()
+        .background(Color.white.opacity(0.9), in: RoundedRectangle(cornerRadius: 8))
+        .shadow(radius: 5)
+        : nil
+    )
+    .onDrop(of: [.fileURL], isTargeted: $isDragOver) { providers in
+      return handleDrop(providers: providers)
+    }
+  }
+
+  /// Handle file drop
+  private func handleDrop(providers: [NSItemProvider]) -> Bool {
+    guard let provider = providers.first else { return false }
+
+    provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { (item, error) in
+      guard let data = item as? Data,
+            let url = URL(dataRepresentation: data, relativeTo: nil) else {
+        return
+      }
+
+      let allowedExtensions = ["png", "jpg", "jpeg"]
+      let fileExtension = url.pathExtension.lowercased()
+
+      guard allowedExtensions.contains(fileExtension) else {
+        return
+      }
+
+      DispatchQueue.main.async {
+        if let image = NSImage(contentsOf: url) {
+          self.skinImage = image
+          self.texturePath = nil
+        }
+      }
+    }
+
+    return true
   }
 }
 

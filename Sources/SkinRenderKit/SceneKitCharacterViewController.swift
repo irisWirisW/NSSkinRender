@@ -66,7 +66,7 @@ public class SceneKitCharacterViewController: NSViewController {
   private var backgroundColor: NSColor = .gray
 
   // UI control settings
-  private var showButtons: Bool = true
+  private var debugMode: Bool = true
 
   // Character body part nodes
   private var characterGroup: SCNNode!
@@ -93,22 +93,62 @@ public class SceneKitCharacterViewController: NSViewController {
 
   // Outer layer display control
   private var showOuterLayers: Bool = true
-  private var toggleButton: NSButton!
+  private lazy var toggleButton: NSButton = {
+    let toggleButton = NSButton(frame: NSRect(x: 20, y: 20, width: 130, height: 30))
+    toggleButton.title = showOuterLayers ? "Hide Outer Layers" : "Show Outer Layers"
+    toggleButton.bezelStyle = .rounded
+    toggleButton.target = self
+    toggleButton.action = #selector(toggleOuterLayers)
+    toggleButton.autoresizingMask = [.maxXMargin, .maxYMargin]
+    return toggleButton
+  }()
 
   // Cape display control
   private var showCape: Bool = true
-  private var capeToggleButton: NSButton!
+  private lazy var capeToggleButton: NSButton = {
+    let capeToggleButton = NSButton(frame: NSRect(x: 20, y: 100, width: 130, height: 30))
+    capeToggleButton.title = showCape ? "Hide Cape" : "Show Cape"
+    capeToggleButton.bezelStyle = .rounded
+    capeToggleButton.target = self
+    capeToggleButton.action = #selector(toggleCape)
+    capeToggleButton.autoresizingMask = [.maxXMargin, .maxYMargin]
+    return capeToggleButton
+  }()
   private var capeAnimationEnabled: Bool = true
-  private var capeAnimationButton: NSButton!
+  private lazy var capeAnimationButton: NSButton = {
+    let capeAnimationButton = NSButton(frame: NSRect(x: 20, y: 140, width: 130, height: 30))
+    capeAnimationButton.title = capeAnimationEnabled ? "Disable Animation" : "Enable Animation"
+    capeAnimationButton.bezelStyle = .rounded
+    capeAnimationButton.target = self
+    capeAnimationButton.action = #selector(toggleCapeAnimationAction)
+    capeAnimationButton.autoresizingMask = [.maxXMargin, .maxYMargin]
+    return capeAnimationButton
+  }()
   // Cape sway configuration
   private var baseCapeSwayAmplitude: Float = Float.pi / 24  // idle sway amplitude (~7.5°)
   private var walkingCapeSwayMultiplier: Float = 1.9        // amplified when walking
   // Walking animation control
   private var walkingAnimationEnabled: Bool = false
-  private var walkingAnimationButton: NSButton!
+  private lazy var walkingAnimationButton: NSButton = {
+    let walkingAnimationButton = NSButton(frame: NSRect(x: 20, y: 180, width: 130, height: 30))
+    walkingAnimationButton.title = walkingAnimationEnabled ? "Stop Walking" : "Start Walking"
+    walkingAnimationButton.bezelStyle = .rounded
+    walkingAnimationButton.target = self
+    walkingAnimationButton.action = #selector(toggleWalkingAnimationAction)
+    walkingAnimationButton.autoresizingMask = [.maxXMargin, .maxYMargin]
+    return walkingAnimationButton
+  }()
 
   // Model type control
-  private var modelTypeButton: NSButton!
+  private lazy var modelTypeButton: NSButton = {
+    let modelTypeButton = NSButton(frame: NSRect(x: 20, y: 60, width: 130, height: 30))
+    modelTypeButton.title = "Switch to \(playerModel == .steve ? "Alex" : "Steve")"
+    modelTypeButton.bezelStyle = .rounded
+    modelTypeButton.target = self
+    modelTypeButton.action = #selector(switchModelType)
+    modelTypeButton.autoresizingMask = [.maxXMargin, .maxYMargin]
+    return modelTypeButton
+  }()
 
   // Convenience initializer
   public convenience init(
@@ -123,7 +163,7 @@ public class SceneKitCharacterViewController: NSViewController {
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
-    self.showButtons = showButtons
+    self.debugMode = showButtons
     loadTexture()
   }
 
@@ -142,7 +182,7 @@ public class SceneKitCharacterViewController: NSViewController {
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
-    self.showButtons = showButtons
+    self.debugMode = showButtons
     loadTexture()
     if let capeTexturePath = capeTexturePath {
       loadCapeTexture(from: capeTexturePath)
@@ -160,7 +200,7 @@ public class SceneKitCharacterViewController: NSViewController {
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
-    self.showButtons = showButtons
+    self.debugMode = showButtons
   }
 
   // Convenience initializer with NSImage texture
@@ -176,7 +216,7 @@ public class SceneKitCharacterViewController: NSViewController {
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
-    self.showButtons = showButtons
+    self.debugMode = showButtons
     // No need to call loadTexture() since we already have the image
   }
 
@@ -195,7 +235,7 @@ public class SceneKitCharacterViewController: NSViewController {
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
-    self.showButtons = showButtons
+    self.debugMode = showButtons
     // No need to call loadTexture() since we already have the images
   }
 
@@ -214,7 +254,7 @@ public class SceneKitCharacterViewController: NSViewController {
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
-    self.showButtons = showButtons
+    self.debugMode = showButtons
     if let texturePath = texturePath {
       loadTexture()
     }
@@ -222,6 +262,17 @@ public class SceneKitCharacterViewController: NSViewController {
 
   public override func loadView() {
     scnView = SCNView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+    if debugMode {
+      scnView.debugOptions = [
+        .showBoundingBoxes,
+        .showWireframe,
+        .renderAsWireframe,
+        .showSkeletons,
+        .showPhysicsShapes,
+        .showCameras,
+        .showLightInfluences
+      ]
+    }
     self.view = scnView
   }
 
@@ -243,145 +294,9 @@ public class SceneKitCharacterViewController: NSViewController {
     scnView.allowsCameraControl = true
     scnView.backgroundColor = backgroundColor
   }
+}
 
-  private func loadTexture() {
-    guard let texturePath = texturePath else { return }
-
-    if let image = NSImage(contentsOfFile: texturePath) {
-      self.skinImage = image
-    } else {
-      print("Failed to load texture from path: \(texturePath)")
-      loadDefaultTexture()
-    }
-  }
-
-  private func loadCapeTexture(from path: String) {
-    if let image = NSImage(contentsOfFile: path) {
-      self.capeImage = image
-      print("✅ Cape texture loaded from: \(path)")
-    } else {
-      print("⚠️ Failed to load cape texture from path: \(path)")
-    }
-  }
-
-  private func loadDefaultTexture() {
-    // Try to load alex.png from Swift Package resources
-    if let resourceURL = Bundle.module.url(forResource: "alex", withExtension: "png"),
-       let image = NSImage(contentsOf: resourceURL) {
-      self.skinImage = image
-    } else {
-      // Fallback: try using NSImage(named:)
-      self.skinImage = NSImage(named: "Skin")
-      if self.skinImage == nil {
-        print("Warning: Could not load default texture")
-      }
-    }
-  }
-
-  // Public method for updating texture
-  public func updateTexture(path: String) {
-    self.texturePath = path
-    loadTexture()
-
-    // Recreate character to apply new texture
-    if skinImage != nil {
-      characterGroup?.removeFromParentNode()
-      setupCharacter()
-    }
-  }
-
-  // Public method for updating texture with NSImage
-  public func updateTexture(image: NSImage) {
-    self.skinImage = image
-    self.texturePath = nil // Clear file path since we're using direct image
-
-    // Recreate character to apply new texture
-    characterGroup?.removeFromParentNode()
-    setupCharacter()
-  }
-
-  // Public method for updating rotation speed
-  public func updateRotationDuration(_ duration: TimeInterval) {
-    self.rotationDuration = duration
-
-    // Update the rotation animation if character is already created
-    if characterGroup != nil {
-      setupRotationAnimation()
-    }
-  }
-
-  // Public method for updating background color
-  public func updateBackgroundColor(_ color: NSColor) {
-    self.backgroundColor = color
-    scnView?.backgroundColor = color
-  }
-
-  // Public method for updating cape texture with file path
-  public func updateCapeTexture(path: String) {
-    self.capeTexturePath = path
-    loadCapeTexture(from: path)
-
-    // Recreate character to apply new cape texture
-    if characterGroup != nil {
-      characterGroup?.removeFromParentNode()
-      setupCharacter()
-    }
-  }
-
-  // Public method for updating cape texture with NSImage
-  public func updateCapeTexture(image: NSImage) {
-    self.capeImage = image
-    self.capeTexturePath = nil // Clear file path since we're using direct image
-
-    // Recreate character to apply new cape texture
-    if characterGroup != nil {
-      characterGroup?.removeFromParentNode()
-      setupCharacter()
-    }
-  }
-
-  // Public method for removing cape texture
-  public func removeCapeTexture() {
-    self.capeImage = nil
-    self.capeTexturePath = nil
-
-    // Recreate character without cape
-    if characterGroup != nil {
-      characterGroup?.removeFromParentNode()
-      setupCharacter()
-    }
-  }
-
-  // Public method for updating player model
-  public func updatePlayerModel(_ model: PlayerModel) {
-    self.playerModel = model
-
-    // Recreate character to apply new model
-    if characterGroup != nil {
-      characterGroup?.removeFromParentNode()
-      setupCharacter()
-    }
-  }
-
-  // Public method for updating button visibility
-  public func updateShowButtons(_ show: Bool) {
-    // Don't update if showButtons value hasn't changed
-    guard self.showButtons != show else { return }
-
-    self.showButtons = show
-
-    // If hiding buttons, remove them from view
-    if !show {
-      toggleButton?.removeFromSuperview()
-      modelTypeButton?.removeFromSuperview()
-      capeToggleButton?.removeFromSuperview()
-      capeAnimationButton?.removeFromSuperview()
-      walkingAnimationButton?.removeFromSuperview()
-    } else {
-      // If showing buttons, recreate them
-      setupUI()
-    }
-  }
+extension SceneKitCharacterViewController {
 
   private func setupScene() {
     scene = SCNScene()
@@ -456,57 +371,12 @@ public class SceneKitCharacterViewController: NSViewController {
   }
 
   private func setupUI() {
-    // Only create buttons if showButtons is true
-    guard showButtons else { return }
-
-    // Create button to toggle outer layers
-    toggleButton = NSButton(frame: NSRect(x: 20, y: 20, width: 130, height: 30))
-    toggleButton.title =
-      showOuterLayers ? "Hide Outer Layers" : "Show Outer Layers"
-    toggleButton.bezelStyle = .rounded
-    toggleButton.target = self
-    toggleButton.action = #selector(toggleOuterLayers)
-    toggleButton.autoresizingMask = [.maxXMargin, .maxYMargin]
+    guard debugMode else { return }
 
     view.addSubview(toggleButton)
-
-    // Create button to switch model type
-    modelTypeButton = NSButton(frame: NSRect(x: 20, y: 60, width: 130, height: 30))
-    modelTypeButton.title = "Switch to \(playerModel == .steve ? "Alex" : "Steve")"
-    modelTypeButton.bezelStyle = .rounded
-    modelTypeButton.target = self
-    modelTypeButton.action = #selector(switchModelType)
-    modelTypeButton.autoresizingMask = [.maxXMargin, .maxYMargin]
-
     view.addSubview(modelTypeButton)
-
-    // Create button to toggle cape
-    capeToggleButton = NSButton(frame: NSRect(x: 20, y: 100, width: 130, height: 30))
-    capeToggleButton.title = showCape ? "Hide Cape" : "Show Cape"
-    capeToggleButton.bezelStyle = .rounded
-    capeToggleButton.target = self
-    capeToggleButton.action = #selector(toggleCape)
-    capeToggleButton.autoresizingMask = [.maxXMargin, .maxYMargin]
-
     view.addSubview(capeToggleButton)
-
-    // Create button to toggle cape animation
-    capeAnimationButton = NSButton(frame: NSRect(x: 20, y: 140, width: 130, height: 30))
-    capeAnimationButton.title = capeAnimationEnabled ? "Disable Animation" : "Enable Animation"
-    capeAnimationButton.bezelStyle = .rounded
-    capeAnimationButton.target = self
-    capeAnimationButton.action = #selector(toggleCapeAnimationAction)
-    capeAnimationButton.autoresizingMask = [.maxXMargin, .maxYMargin]
-
     view.addSubview(capeAnimationButton)
-
-    // Create button to toggle walking animation
-    walkingAnimationButton = NSButton(frame: NSRect(x: 20, y: 180, width: 130, height: 30))
-    walkingAnimationButton.title = walkingAnimationEnabled ? "Stop Walking" : "Start Walking"
-    walkingAnimationButton.bezelStyle = .rounded
-    walkingAnimationButton.target = self
-    walkingAnimationButton.action = #selector(toggleWalkingAnimationAction)
-    walkingAnimationButton.autoresizingMask = [.maxXMargin, .maxYMargin]
     view.addSubview(walkingAnimationButton)
   }
 
@@ -516,6 +386,175 @@ public class SceneKitCharacterViewController: NSViewController {
     rightClickGesture.buttonMask = 0x2 // Right mouse button
     scnView.addGestureRecognizer(rightClickGesture)
   }
+
+}
+
+// MARK: - Texture Methods
+
+extension SceneKitCharacterViewController {
+
+  private func loadTexture() {
+    guard let texturePath = texturePath else { return }
+
+    if let image = NSImage(contentsOfFile: texturePath) {
+      self.skinImage = image
+    } else {
+      print("Failed to load texture from path: \(texturePath)")
+      loadDefaultTexture()
+    }
+  }
+
+  private func loadCapeTexture(from path: String) {
+    if let image = NSImage(contentsOfFile: path) {
+      self.capeImage = image
+      print("✅ Cape texture loaded from: \(path)")
+    } else {
+      print("⚠️ Failed to load cape texture from path: \(path)")
+    }
+  }
+
+  private func loadDefaultTexture() {
+    // Try to load alex.png from Swift Package resources
+    if let resourceURL = Bundle.module.url(forResource: "alex", withExtension: "png"),
+       let image = NSImage(contentsOf: resourceURL) {
+      self.skinImage = image
+    } else {
+      // Fallback: try using NSImage(named:)
+      self.skinImage = NSImage(named: "Skin")
+      if self.skinImage == nil {
+        print("Warning: Could not load default texture")
+      }
+    }
+  }
+}
+
+// MARK: - Update Methods
+
+extension SceneKitCharacterViewController {
+
+  // Public method for updating texture
+  public func updateTexture(path: String) {
+    self.texturePath = path
+    loadTexture()
+
+    // Recreate character to apply new texture
+    if skinImage != nil {
+      characterGroup?.removeFromParentNode()
+      setupCharacter()
+    }
+  }
+
+  // Public method for updating texture with NSImage
+  public func updateTexture(image: NSImage) {
+    self.skinImage = image
+    self.texturePath = nil
+
+    // Recreate character to apply new texture
+    characterGroup?.removeFromParentNode()
+    setupCharacter()
+  }
+
+  // Public method for updating rotation speed
+  public func updateRotationDuration(_ duration: TimeInterval) {
+    self.rotationDuration = duration
+
+    // Update the rotation animation if character is already created
+    if characterGroup != nil {
+      setupRotationAnimation()
+    }
+  }
+
+  // Public method for updating background color
+  public func updateBackgroundColor(_ color: NSColor) {
+    self.backgroundColor = color
+    scnView?.backgroundColor = color
+  }
+
+  // Public method for updating cape texture with file path
+  public func updateCapeTexture(path: String) {
+    self.capeTexturePath = path
+    loadCapeTexture(from: path)
+
+    // Recreate character to apply new cape texture
+    if characterGroup != nil {
+      characterGroup?.removeFromParentNode()
+      setupCharacter()
+    }
+  }
+
+  // Public method for updating cape texture with NSImage
+  public func updateCapeTexture(image: NSImage) {
+    self.capeImage = image
+    self.capeTexturePath = nil // Clear file path since we're using direct image
+
+    // Recreate character to apply new cape texture
+    if characterGroup != nil {
+      characterGroup?.removeFromParentNode()
+      setupCharacter()
+    }
+  }
+
+  // Public method for removing cape texture
+  public func removeCapeTexture() {
+    self.capeImage = nil
+    self.capeTexturePath = nil
+
+    // Recreate character without cape
+    if characterGroup != nil {
+      characterGroup?.removeFromParentNode()
+      setupCharacter()
+    }
+  }
+
+  // Public method for updating player model
+  public func updatePlayerModel(_ model: PlayerModel) {
+    self.playerModel = model
+
+    // Recreate character to apply new model
+    if characterGroup != nil {
+      characterGroup?.removeFromParentNode()
+      setupCharacter()
+    }
+  }
+
+  // Public method for updating button visibility
+  public func updateShowButtons(_ show: Bool) {
+    // Don't update if showButtons value hasn't changed
+    guard self.debugMode != show else { return }
+
+    self.debugMode = show
+
+    // If hiding buttons, remove them from view
+    if !show {
+      toggleButton.removeFromSuperview()
+      modelTypeButton.removeFromSuperview()
+      capeToggleButton.removeFromSuperview()
+      capeAnimationButton.removeFromSuperview()
+      walkingAnimationButton.removeFromSuperview()
+    } else {
+      // If showing buttons, recreate them
+      setupUI()
+    }
+  }
+
+  private func isPointOverUIButton(_ point: CGPoint) -> Bool {
+    // If buttons are not shown, they can't be clicked
+    guard debugMode else { return false }
+
+    let buttons = [toggleButton, modelTypeButton, capeToggleButton, capeAnimationButton, walkingAnimationButton]
+
+    for button in buttons {
+      if button.frame.contains(point) {
+        return true
+      }
+    }
+    return false
+  }
+}
+
+// MARK: - Action Handlers
+
+extension SceneKitCharacterViewController {
 
   @objc private func handleRightClick(_ gestureRecognizer: NSClickGestureRecognizer) {
     let location = gestureRecognizer.location(in: scnView)
@@ -531,20 +570,6 @@ public class SceneKitCharacterViewController: NSViewController {
     print("Right-click detected: toggled walking animation to \(walkingAnimationEnabled ? "enabled" : "disabled")")
   }
 
-  private func isPointOverUIButton(_ point: CGPoint) -> Bool {
-    // If buttons are not shown, they can't be clicked
-    guard showButtons else { return false }
-
-    let buttons = [toggleButton, modelTypeButton, capeToggleButton, capeAnimationButton, walkingAnimationButton]
-
-    for button in buttons {
-      if let button = button, button.frame.contains(point) {
-        return true
-      }
-    }
-    return false
-  }
-
   @objc private func toggleOuterLayers() {
     showOuterLayers.toggle()
 
@@ -556,8 +581,7 @@ public class SceneKitCharacterViewController: NSViewController {
     rightLegSleeveNode?.isHidden = !showOuterLayers
     leftLegSleeveNode?.isHidden = !showOuterLayers
 
-    toggleButton.title =
-      showOuterLayers ? "Hide Outer Layers" : "Show Outer Layers"
+    toggleButton.title = showOuterLayers ? "Hide Outer Layers" : "Show Outer Layers"
 
     print("Outer layers visibility: \(showOuterLayers ? "shown" : "hidden")")
   }
@@ -603,7 +627,7 @@ public class SceneKitCharacterViewController: NSViewController {
     } else {
       stopWalkingAnimation()
     }
-    walkingAnimationButton?.title = walkingAnimationEnabled ? "Stop Walking" : "Start Walking"
+    walkingAnimationButton.title = walkingAnimationEnabled ? "Stop Walking" : "Start Walking"
     if capeAnimationEnabled { refreshCapeSwayAnimation() }
   }
 }
@@ -834,12 +858,12 @@ extension SceneKitCharacterViewController {
     // - Right/Left edges: narrow strips for thickness
     // - Top/Bottom: horizontal strips
     let capeRects: [CGRect] = [
-      CGRect(x: 11, y: 1, width: 10, height: 16),  // front (inner side)
-      CGRect(x: 21, y: 1, width: 1, height: 16),   // right edge
-      CGRect(x: 1, y: 1, width: 10, height: 16),   // back (outer side) - main visible surface
-      CGRect(x: 0, y: 1, width: 1, height: 16),    // left edge
-      CGRect(x: 1, y: 0, width: 10, height: 1),    // top edge
-      CGRect(x: 11, y: 0, width: 10, height: 1),   // bottom edge
+      CGRect(x: 11, y: 1, width: 10, height: 16),   // front (inner side)
+      CGRect(x: 21, y: 1, width:  1, height: 16),   // right edge
+      CGRect(x:  1, y: 1, width: 10, height: 16),   // back (outer side) - main visible surface
+      CGRect(x:  0, y: 1, width:  1, height: 16),   // left edge
+      CGRect(x:  1, y: 0, width: 10, height:  1),   // top edge
+      CGRect(x: 11, y: 0, width: 10, height:  1),   // bottom edge
     ]
 
     var materials: [SCNMaterial] = []
@@ -906,9 +930,7 @@ extension SceneKitCharacterViewController {
 
     for (index, rect) in rects.enumerated() {
       let material = SCNMaterial()
-      print(
-        "Processing \(layerName) face \(index) (\(faceNames[index])) with rect: \(rect)"
-      )
+      print("Processing \(layerName) face \(index) (\(faceNames[index])) with rect: \(rect)")
 
       if let croppedImage = cropImage(
         skinImage,
@@ -1015,14 +1037,6 @@ extension SceneKitCharacterViewController {
       size: NSSize(width: rect.width, height: rect.height)
     )
 
-    #if DEBUG
-      saveDebugImage(
-        resultImage,
-        name:
-          "\(layerName)_crop_\(Int(rect.minX))_\(Int(rect.minY))_\(Int(rect.width))x\(Int(rect.height))"
-      )
-    #endif
-
     return resultImage
   }
 
@@ -1069,26 +1083,6 @@ extension SceneKitCharacterViewController {
     return cgImage.alphaInfo != .none && cgImage.alphaInfo != .noneSkipFirst
       && cgImage.alphaInfo != .noneSkipLast
   }
-
-  #if DEBUG
-    private func saveDebugImage(_ image: NSImage, name: String) {
-      guard let data = image.tiffRepresentation,
-        let bitmapRep = NSBitmapImageRep(data: data),
-        let pngData = bitmapRep.representation(using: .png, properties: [:])
-      else {
-        return
-      }
-
-      let desktopURL = FileManager.default.urls(
-        for: .desktopDirectory,
-        in: .userDomainMask
-      ).first!
-      let fileURL = desktopURL.appendingPathComponent("\(name).png")
-
-      try? pngData.write(to: fileURL)
-      print("🖼️ Saved debug image: \(fileURL.path)")
-    }
-  #endif
 
   private func setupRenderingPriorities() {
     // Set rendering order and depth offset to avoid Z-fighting
@@ -1519,7 +1513,7 @@ extension SceneKitCharacterViewController {
       backgroundColor: backgroundColor
     )
     let window = NSWindow(
-      contentRect: NSRect(x: 300, y: 300, width: 800, height: 600),
+      contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
       styleMask: [.titled, .closable, .resizable],
       backing: .buffered,
       defer: false
