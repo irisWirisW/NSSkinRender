@@ -191,6 +191,10 @@ public struct SkinRenderView: View {
   /// Drop feedback
   @State private var dropError: String?
 
+  /// Optional callbacks for drop events
+  public let onSkinDropped: ((NSImage) -> Void)?
+  public let onCapeDropped: ((NSImage) -> Void)?
+
   /// Initialize the skin render view with an optional texture path
   /// - Parameters:
   ///   - texturePath: Path to the Minecraft skin texture file
@@ -198,7 +202,7 @@ public struct SkinRenderView: View {
   ///   - playerModel: Player model type (Steve/Alex)
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
-  public init(texturePath: String? = nil, capeTexturePath: String? = nil, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
+  public init(texturePath: String? = nil, capeTexturePath: String? = nil, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray, onSkinDropped: ((NSImage) -> Void)? = nil, onCapeDropped: ((NSImage) -> Void)? = nil) {
     self._texturePath = State(initialValue: texturePath)
     self._skinImage = State(initialValue: nil)
     self._capeTexturePath = State(initialValue: capeTexturePath)
@@ -206,6 +210,8 @@ public struct SkinRenderView: View {
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
+    self.onSkinDropped = onSkinDropped
+    self.onCapeDropped = onCapeDropped
   }
 
   /// Initialize the skin render view with a direct NSImage texture
@@ -215,7 +221,7 @@ public struct SkinRenderView: View {
   ///   - playerModel: Player model type (Steve/Alex)
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
-  public init(skinImage: NSImage, capeImage: NSImage? = nil, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
+  public init(skinImage: NSImage, capeImage: NSImage? = nil, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray, onSkinDropped: ((NSImage) -> Void)? = nil, onCapeDropped: ((NSImage) -> Void)? = nil) {
     self._texturePath = State(initialValue: nil)
     self._skinImage = State(initialValue: skinImage)
     self._capeTexturePath = State(initialValue: nil)
@@ -223,6 +229,8 @@ public struct SkinRenderView: View {
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
+    self.onSkinDropped = onSkinDropped
+    self.onCapeDropped = onCapeDropped
   }
 
   /// Initialize the skin render view with mixed texture inputs
@@ -232,7 +240,7 @@ public struct SkinRenderView: View {
   ///   - playerModel: Player model type (Steve/Alex)
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
-  public init(texturePath: String? = nil, capeImage: NSImage, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray) {
+  public init(texturePath: String? = nil, capeImage: NSImage, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray, onSkinDropped: ((NSImage) -> Void)? = nil, onCapeDropped: ((NSImage) -> Void)? = nil) {
     self._texturePath = State(initialValue: texturePath)
     self._skinImage = State(initialValue: nil)
     self._capeTexturePath = State(initialValue: nil)
@@ -240,6 +248,8 @@ public struct SkinRenderView: View {
     self.playerModel = playerModel
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
+    self.onSkinDropped = onSkinDropped
+    self.onCapeDropped = onCapeDropped
   }
 
   public var body: some View {
@@ -352,6 +362,7 @@ public struct SkinRenderView: View {
           if validateSkin(image) {
             self.skinImage = image
             self.texturePath = nil
+            self.onSkinDropped?(image)
             print("✅ Skin updated successfully")
           } else {
             let size = image.size
@@ -361,6 +372,7 @@ public struct SkinRenderView: View {
           if validateCape(image) {
             self.capeImage = image
             self.capeTexturePath = nil
+            self.onCapeDropped?(image)
             print("✅ Cape updated successfully")
           } else {
             let size = image.size
