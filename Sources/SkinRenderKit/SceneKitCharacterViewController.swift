@@ -6,53 +6,18 @@
 import Cocoa
 import SceneKit
 
-// MARK: - Player Model Types
-public enum PlayerModel: String, CaseIterable {
-  case steve = "steve"
-  case alex = "alex"
-
-  var displayName: String {
-    switch self {
-    case .steve: return "Steve"
-    case .alex: return "Alex"
-    }
-  }
-
-  // Arm dimensions for each model
-  var armDimensions: (width: CGFloat, height: CGFloat, length: CGFloat) {
-    switch self {
-    case .steve: return (4.0, 12.0, 4.0)
-    case .alex: return (3.0, 12.0, 4.0)
-    }
-  }
-
-  // Arm sleeve dimensions for each model
-  var armSleeveDimensions: (width: CGFloat, height: CGFloat, length: CGFloat) {
-    switch self {
-    case .steve: return (4.5, 12.5, 4.5)
-    case .alex: return (3.5, 12.5, 4.5)
-    }
-  }
-
-  // Arm positions for each model
-  var armPositions: (left: SCNVector3, right: SCNVector3) {
-    switch self {
-    case .steve: return (SCNVector3(6, 6, 0), SCNVector3(-6, 6, 0))
-    case .alex: return (SCNVector3(5.5, 6, 0), SCNVector3(-5.5, 6, 0))
-    }
-  }
-}
-
 public class SceneKitCharacterViewController: NSViewController {
 
   private var scnView: SCNView!
   private var scene: SCNScene!
 
-  // Texture file path
+  // MARK: - Texture Settings
+
   private var texturePath: String?
   private var skinImage: NSImage?
 
-  // Cape texture support
+  // MARK: - Cape Texture Settings
+
   private var capeTexturePath: String?
   private var capeImage: NSImage?
 
@@ -60,7 +25,7 @@ public class SceneKitCharacterViewController: NSViewController {
   private var playerModel: PlayerModel = .steve
 
   // Rotation animation settings
-  private var rotationDuration: TimeInterval = 15.0 // Duration for one full rotation in seconds
+  private var rotationDuration: TimeInterval = 15.0
 
   // Background color settings
   private var backgroundColor: NSColor = .gray
@@ -267,7 +232,7 @@ public class SceneKitCharacterViewController: NSViewController {
     self.rotationDuration = rotationDuration
     self.backgroundColor = backgroundColor
     self.debugMode = debugMode
-    if let texturePath = texturePath {
+    if texturePath != nil {
       loadTexture()
     }
   }
@@ -307,6 +272,8 @@ public class SceneKitCharacterViewController: NSViewController {
     scnView.backgroundColor = backgroundColor
   }
 }
+
+// MARK: - Setup Methods
 
 extension SceneKitCharacterViewController {
 
@@ -360,7 +327,7 @@ extension SceneKitCharacterViewController {
   private func setupCamera() {
     let cameraNode = SCNNode()
     cameraNode.camera = SCNCamera()
-    cameraNode.position = SCNVector3(0, 10, 30)
+    cameraNode.position = SCNVector3(0, 30, 30)
     cameraNode.look(at: SCNVector3(0, 10, 0))
     scene.rootNode.addChildNode(cameraNode)
   }
@@ -444,7 +411,6 @@ extension SceneKitCharacterViewController {
 
 extension SceneKitCharacterViewController {
 
-  // Public method for updating texture
   public func updateTexture(path: String) {
     self.texturePath = path
     loadTexture()
@@ -456,7 +422,6 @@ extension SceneKitCharacterViewController {
     }
   }
 
-  // Public method for updating texture with NSImage
   public func updateTexture(image: NSImage) {
     self.skinImage = image
     self.texturePath = nil
@@ -466,7 +431,6 @@ extension SceneKitCharacterViewController {
     setupCharacter()
   }
 
-  // Public method for updating rotation speed
   public func updateRotationDuration(_ duration: TimeInterval) {
     self.rotationDuration = duration
 
@@ -476,13 +440,11 @@ extension SceneKitCharacterViewController {
     }
   }
 
-  // Public method for updating background color
   public func updateBackgroundColor(_ color: NSColor) {
     self.backgroundColor = color
     scnView?.backgroundColor = color
   }
 
-  // Public method for updating cape texture with file path
   public func updateCapeTexture(path: String) {
     self.capeTexturePath = path
     loadCapeTexture(from: path)
@@ -494,7 +456,6 @@ extension SceneKitCharacterViewController {
     }
   }
 
-  // Public method for updating cape texture with NSImage
   public func updateCapeTexture(image: NSImage) {
     self.capeImage = image
     self.capeTexturePath = nil // Clear file path since we're using direct image
@@ -506,7 +467,6 @@ extension SceneKitCharacterViewController {
     }
   }
 
-  // Public method for removing cape texture
   public func removeCapeTexture() {
     self.capeImage = nil
     self.capeTexturePath = nil
@@ -518,7 +478,6 @@ extension SceneKitCharacterViewController {
     }
   }
 
-  // Public method for updating player model
   public func updatePlayerModel(_ model: PlayerModel) {
     self.playerModel = model
 
@@ -529,7 +488,6 @@ extension SceneKitCharacterViewController {
     }
   }
 
-  // Public method for updating button visibility
   public func updateShowButtons(_ show: Bool) {
     // Don't update if debugMode value hasn't changed
     guard self.debugMode != show else { return }
@@ -546,6 +504,21 @@ extension SceneKitCharacterViewController {
     } else {
       // If showing buttons, recreate them
       setupUI()
+    }
+  }
+
+  public func toggleCapeAnimation(_ enabled: Bool) {
+    guard let capePivotNode = capePivotNode else { return }
+
+    if enabled {
+      if capePivotNode.action(forKey: "capeSwayAnimation") == nil {
+        addCapeSwayAnimation()
+      }
+    } else {
+      capePivotNode.removeAction(forKey: "capeSwayAnimation")
+      // Reset to base rotation
+      capePivotNode.eulerAngles = SCNVector3(Float.pi / 14, 0, 0)
+      print("🔇 Cape animation disabled")
     }
   }
 
@@ -652,31 +625,9 @@ extension SceneKitCharacterViewController {
     from skinImage: NSImage,
     isHat: Bool = false
   ) -> [SCNMaterial] {
-    let headRects: [CGRect]
-    let layerName: String
-
-    if isHat {
-      // Hat layer texture coordinates
-      headRects = [
-        CGRect(x: 40, y: 8, width: 8, height: 8),  // front
-        CGRect(x: 48, y: 8, width: 8, height: 8),  // right
-        CGRect(x: 56, y: 8, width: 8, height: 8),  // back
-        CGRect(x: 32, y: 8, width: 8, height: 8),  // left
-        CGRect(x: 40, y: 0, width: 8, height: 8),  // top
-        CGRect(x: 48, y: 0, width: 8, height: 8),  // bottom
-      ]
-      layerName = "hat"
-    } else {
-      headRects = [
-        CGRect(x:  8, y: 8, width: 8, height: 8), // front
-        CGRect(x: 16, y: 8, width: 8, height: 8), // right
-        CGRect(x: 24, y: 8, width: 8, height: 8), // back
-        CGRect(x:  0, y: 8, width: 8, height: 8), // left
-        CGRect(x:  8, y: 0, width: 8, height: 8), // top
-        CGRect(x: 16, y: 0, width: 8, height: 8), // bottom
-      ]
-      layerName = "head"
-    }
+    let specs: [CubeFace.Spec] = isHat ? CubeFace.headHat : CubeFace.headBase
+    let headRects: [CGRect] = specs.map { $0.rect }
+    let layerName: String = isHat ? "hat" : "head"
 
     return createMaterials(
       from: skinImage,
@@ -690,32 +641,9 @@ extension SceneKitCharacterViewController {
     from skinImage: NSImage,
     isJacket: Bool = false
   ) -> [SCNMaterial] {
-    let bodyRects: [CGRect]
-    let layerName: String
-
-    if isJacket {
-      // Jacket layer texture coordinates
-      bodyRects = [
-        CGRect(x: 20, y: 36, width: 8, height: 12),  // front
-        CGRect(x: 28, y: 36, width: 4, height: 12),  // right
-        CGRect(x: 32, y: 36, width: 8, height: 12),  // back
-        CGRect(x: 16, y: 36, width: 4, height: 12),  // left
-        CGRect(x: 20, y: 32, width: 8, height:  4),  // top
-        CGRect(x: 28, y: 32, width: 8, height:  4),  // bottom
-      ]
-      layerName = "jacket"
-    } else {
-      // Base body texture coordinates
-      bodyRects = [
-        CGRect(x: 20, y: 20, width: 8, height: 12),  // front
-        CGRect(x: 28, y: 20, width: 4, height: 12),  // right
-        CGRect(x: 32, y: 20, width: 8, height: 12),  // back
-        CGRect(x: 16, y: 20, width: 4, height: 12),  // left
-        CGRect(x: 20, y: 16, width: 8, height:  4),  // top
-        CGRect(x: 28, y: 16, width: 8, height:  4),  // bottom
-      ]
-      layerName = "body"
-    }
+    let specs: [CubeFace.Spec] = isJacket ? CubeFace.bodyJacket : CubeFace.bodyBase
+    let bodyRects: [CGRect] = specs.map { $0.rect }
+    let layerName: String = isJacket ? "jacket" : "body"
 
     return createMaterials(
       from: skinImage,
@@ -730,61 +658,14 @@ extension SceneKitCharacterViewController {
     isLeft: Bool,
     isSleeve: Bool
   ) -> [SCNMaterial] {
-    let armRects: [CGRect]
-    let layerName: String
-
-    // Determine arm width based on player model
     let armWidth: CGFloat = playerModel.armDimensions.width
-
-    if isSleeve {
-      if isLeft {
-        // Left arm sleeve texture coordinates
-        armRects = [
-          CGRect(x: 52, y: 52, width: armWidth, height: 12),  // front
-          CGRect(x: 52 + armWidth, y: 52, width: 4, height: 12),  // right
-          CGRect(x: 52 + armWidth + 4, y: 52, width: armWidth, height: 12),  // back
-          CGRect(x: 48, y: 52, width: 4, height: 12),  // left
-          CGRect(x: 52, y: 48, width: armWidth, height: 4),  // top
-          CGRect(x: 52 + armWidth, y: 48, width: armWidth, height: 4),  // bottom
-        ]
-        layerName = "left_arm_sleeve"
-      } else {
-        // Right arm sleeve texture coordinates
-        armRects = [
-          CGRect(x: 44, y: 36, width: armWidth, height: 12),  // front
-          CGRect(x: 44 + armWidth, y: 36, width: 4, height: 12),  // right
-          CGRect(x: 44 + armWidth + 4, y: 36, width: armWidth, height: 12),  // back
-          CGRect(x: 40, y: 36, width: 4, height: 12),  // left
-          CGRect(x: 44, y: 32, width: armWidth, height: 4),  // top
-          CGRect(x: 44 + armWidth, y: 32, width: armWidth, height: 4),  // bottom
-        ]
-        layerName = "right_arm_sleeve"
-      }
-    } else {
-      if isLeft {
-        // Left arm base texture coordinates
-        armRects = [
-          CGRect(x: 36, y: 52, width: armWidth, height: 12),  // front
-          CGRect(x: 36 + armWidth, y: 52, width: 4, height: 12),  // right
-          CGRect(x: 36 + armWidth + 4, y: 52, width: armWidth, height: 12),  // back
-          CGRect(x: 32, y: 52, width: 4, height: 12),  // left
-          CGRect(x: 36, y: 48, width: armWidth, height: 4),  // top
-          CGRect(x: 36 + armWidth, y: 48, width: armWidth, height: 4),  // bottom
-        ]
-        layerName = "left_arm"
-      } else {
-        // Right arm base texture coordinates
-        armRects = [
-          CGRect(x: 44, y: 20, width: armWidth, height: 12),  // front
-          CGRect(x: 44 + armWidth, y: 20, width: 4, height: 12),  // right
-          CGRect(x: 44 + armWidth + 4, y: 20, width: armWidth, height: 12),  // back
-          CGRect(x: 40, y: 20, width: 4, height: 12),  // left
-          CGRect(x: 44, y: 16, width: armWidth, height: 4),  // top
-          CGRect(x: 44 + armWidth, y: 16, width: armWidth, height: 4),  // bottom
-        ]
-        layerName = "right_arm"
-      }
-    }
+    let specs: [CubeFace.Spec] = isSleeve
+      ? CubeFace.armSleeve(isLeft: isLeft, armWidth: armWidth)
+      : CubeFace.armBase(isLeft: isLeft, armWidth: armWidth)
+    let armRects: [CGRect] = specs.map { $0.rect }
+    let layerName: String = isSleeve
+      ? (isLeft ? "left_arm_sleeve" : "right_arm_sleeve")
+      : (isLeft ? "left_arm" : "right_arm")
 
     return createMaterials(
       from: skinImage,
@@ -800,58 +681,13 @@ extension SceneKitCharacterViewController {
     isLeft: Bool,
     isSleeve: Bool
   ) -> [SCNMaterial] {
-    let legRects: [CGRect]
-    let layerName: String
-
-    if isSleeve {
-      if isLeft {
-        // Left leg pants texture coordinates
-        legRects = [
-          CGRect(x:  4, y: 52, width: 4, height: 12),  // front
-          CGRect(x:  8, y: 52, width: 4, height: 12),  // right
-          CGRect(x: 12, y: 52, width: 4, height: 12),  // back
-          CGRect(x:  0, y: 52, width: 4, height: 12),  // left
-          CGRect(x:  4, y: 48, width: 4, height:  4),  // top
-          CGRect(x:  8, y: 48, width: 4, height:  4),  // bottom
-        ]
-        layerName = "left_leg_sleeve"
-      } else {
-        // Right leg pants texture coordinates
-        legRects = [
-          CGRect(x:  4, y: 36, width: 4, height: 12),  // front
-          CGRect(x:  8, y: 36, width: 4, height: 12),  // right
-          CGRect(x: 12, y: 36, width: 4, height: 12),  // back
-          CGRect(x:  0, y: 36, width: 4, height: 12),  // left
-          CGRect(x:  4, y: 32, width: 4, height:  4),  // top
-          CGRect(x:  8, y: 32, width: 4, height:  4),  // bottom
-        ]
-        layerName = "right_leg_sleeve"
-      }
-    } else {
-      if isLeft {
-        // Left leg base texture coordinates (mirrored from right leg)
-        legRects = [
-          CGRect(x: 20, y: 52, width: 4, height: 12),  // front
-          CGRect(x: 24, y: 52, width: 4, height: 12),  // right
-          CGRect(x: 28, y: 52, width: 4, height: 12),  // back
-          CGRect(x: 16, y: 52, width: 4, height: 12),  // left
-          CGRect(x: 20, y: 48, width: 4, height:  4),  // top
-          CGRect(x: 24, y: 48, width: 4, height:  4),  // bottom
-        ]
-        layerName = "left_leg"
-      } else {
-        // Right leg base texture coordinates
-        legRects = [
-          CGRect(x:  4, y: 20, width: 4, height: 12),  // front
-          CGRect(x:  8, y: 20, width: 4, height: 12),  // right
-          CGRect(x: 12, y: 20, width: 4, height: 12),  // back
-          CGRect(x:  0, y: 20, width: 4, height: 12),  // left
-          CGRect(x:  4, y: 16, width: 4, height:  4),  // top
-          CGRect(x:  8, y: 16, width: 4, height:  4),  // bottom
-        ]
-        layerName = "right_leg"
-      }
-    }
+    let specs: [CubeFace.Spec] = isSleeve
+      ? CubeFace.legSleeve(isLeft: isLeft)
+      : CubeFace.legBase(isLeft: isLeft)
+    let legRects: [CGRect] = specs.map { $0.rect }
+    let layerName: String = isSleeve
+      ? (isLeft ? "left_leg_sleeve" : "right_leg_sleeve")
+      : (isLeft ? "left_leg" : "right_leg")
 
     return createMaterials(
       from: skinImage,
@@ -862,31 +698,16 @@ extension SceneKitCharacterViewController {
     )
   }
 
-  private func createCapeMaterials(from capeImage: NSImage) -> [SCNMaterial] {
-    // Cape texture coordinates based on Minecraft cape texture (64x32 pixels)
-    // Standard Minecraft cape mapping with proper thickness support:
-    // - Front (inner side): x=11, y=1, width=10, height=16
-    // - Back (outer side): x=1, y=1, width=10, height=16 (main visible surface)
-    // - Right/Left edges: narrow strips for thickness
-    // - Top/Bottom: horizontal strips
-    let capeRects: [CGRect] = [
-      CGRect(x: 12, y: 1, width: 10, height: 16),   // front (inner side)
-      CGRect(x:  0, y: 1, width:  1, height: 16),   // right edge
-      CGRect(x:  1, y: 1, width: 10, height: 16),   // back (outer side) - main visible surface
-      CGRect(x: 11, y: 1, width:  1, height: 16),   // left edge
-      CGRect(x:  1, y: 0, width: 10, height:  1),   // top edge
-      CGRect(x: 11, y: 0, width: 10, height:  1),   // bottom edge
-    ]
-
+  private func createCapeMaterials(
+    from capeImage: NSImage
+  ) -> [SCNMaterial] {
     var materials: [SCNMaterial] = []
-    let faceNames = ["front", "right", "back", "left", "top", "bottom"]
 
-    for (index, rect) in capeRects.enumerated() {
+    for (_, spec) in CubeFace.cape.enumerated() {
       let material = SCNMaterial()
 
-      if let croppedImage = cropImage(capeImage, rect: rect, layerName: "cape") {
-        // Check if this is the bottom face (index 5) and rotate 180 degrees if needed
-        let finalImage = (index == 5) ? rotateImage(croppedImage, degrees: 180) ?? croppedImage : croppedImage
+      if let croppedImage = cropImage(capeImage, rect: spec.rect, layerName: "cape") {
+        let finalImage = spec.rotate180 ? (rotateImage(croppedImage, degrees: 180) ?? croppedImage) : croppedImage
         material.diffuse.contents = finalImage
         material.diffuse.magnificationFilter = .nearest
         material.diffuse.minificationFilter = .nearest
@@ -913,7 +734,7 @@ extension SceneKitCharacterViewController {
         material.ambient.contents = NSColor.black.withAlphaComponent(0.2)
         material.specular.contents = NSColor.white.withAlphaComponent(0.1)
 
-        print("✅ Created enhanced cape material for \(faceNames[index])")
+        print("✅ Created enhanced cape material for \(spec.face.rawValue)")
       } else {
         // Fallback material with improved properties
         material.diffuse.contents = NSColor.red.withAlphaComponent(0.8)
@@ -921,7 +742,7 @@ extension SceneKitCharacterViewController {
         material.blendMode = .alpha
         material.isDoubleSided = true
         material.lightingModel = .phong
-        print("⚠️ Using fallback material for cape \(faceNames[index])")
+        print("⚠️ Using fallback material for cape \(spec.face.rawValue)")
       }
 
       materials.append(material)
@@ -1031,18 +852,8 @@ extension SceneKitCharacterViewController {
 
 extension SceneKitCharacterViewController {
 
-  private func cropImage(
-    _ image: NSImage,
-    rect: CGRect,
-    layerName: String = "character"
-  ) -> NSImage? {
-    guard
-      let cgImage = image.cgImage(
-        forProposedRect: nil,
-        context: nil,
-        hints: nil
-      )
-    else {
+  private func cropImage(_ image: NSImage, rect: CGRect, layerName: String = "character") -> NSImage? {
+    guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
       print("❌ Failed to get CGImage from NSImage")
       return nil
     }
@@ -1050,12 +861,7 @@ extension SceneKitCharacterViewController {
     let imageWidth = CGFloat(cgImage.width)
     let imageHeight = CGFloat(cgImage.height)
 
-    let cropRect = CGRect(
-      x: rect.minX,
-      y: rect.minY,
-      width: rect.width,
-      height: rect.height
-    )
+    let cropRect = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: rect.height)
 
     let imageBounds = CGRect(x: 0, y: 0, width: imageWidth, height: imageHeight)
     if !imageBounds.contains(cropRect) {
@@ -1392,7 +1198,7 @@ extension SceneKitCharacterViewController {
 
     // Third priority: Try to load default cape from bundle resources
     if capeTextureImage == nil {
-      if let resourceURL = Bundle.module.url(forResource: "cap", withExtension: "png"),
+      if let resourceURL = Bundle.module.url(forResource: "cape", withExtension: "png"),
          let image = NSImage(contentsOf: resourceURL) {
         capeTextureImage = image
         print("✅ Using default cape texture from bundle")
@@ -1442,8 +1248,12 @@ extension SceneKitCharacterViewController {
 
     print("✅ Cape created with pivot and animation. Pivot pos: \(capePivotNode.position), cape local pos: \(capeNode.position)")
   }
+}
 
-  // MARK: - Cape Animation
+// MARK: - Animation
+
+extension SceneKitCharacterViewController {
+
   private func addCapeSwayAnimation() {
     guard let capePivotNode = capePivotNode else { return }
 
@@ -1494,29 +1304,12 @@ extension SceneKitCharacterViewController {
     print("🌪️ Cape sway animation added")
   }
 
-  // Public method to toggle cape animation
-  public func toggleCapeAnimation(_ enabled: Bool) {
-    guard let capePivotNode = capePivotNode else { return }
-
-    if enabled {
-      if capePivotNode.action(forKey: "capeSwayAnimation") == nil {
-        addCapeSwayAnimation()
-      }
-    } else {
-      capePivotNode.removeAction(forKey: "capeSwayAnimation")
-      // Reset to base rotation
-      capePivotNode.eulerAngles = SCNVector3(Float.pi / 14, 0, 0)
-      print("🔇 Cape animation disabled")
-    }
-  }
-
   private func refreshCapeSwayAnimation() {
     guard capeAnimationEnabled else { return }
     capePivotNode?.removeAction(forKey: "capeSwayAnimation")
     addCapeSwayAnimation()
   }
 
-  // MARK: - Walking Animation
   private func startWalkingAnimation() {
     // Remove existing limb actions on group nodes
     rightArmGroupNode?.removeAction(forKey: "walkSwing")
@@ -1583,6 +1376,7 @@ extension SceneKitCharacterViewController {
 }
 
 // MARK: - Usage Helper
+
 extension SceneKitCharacterViewController {
 
   static func presentInNewWindow(

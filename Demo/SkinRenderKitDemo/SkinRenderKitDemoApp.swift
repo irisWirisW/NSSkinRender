@@ -10,7 +10,7 @@ import SwiftUI
 struct SkinRender_SwiftUIApp: App {
   var body: some Scene {
     WindowGroup {
-        SkinRenderView(playerModel: .alex, rotationDuration: 12)
+      SkinRenderView(playerModel: .steve, rotationDuration: 12)
         .frame(width: 700, height: 500)
     }
   }

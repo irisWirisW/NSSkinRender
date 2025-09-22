@@ -37,7 +37,14 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
   ///   - debugMode: Whether to show control buttons (default: false)
-  public init(texturePath: String? = nil, capeTexturePath: String? = nil, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray, debugMode: Bool = false) {
+  public init(
+    texturePath: String? = nil,
+    capeTexturePath: String? = nil,
+    playerModel: PlayerModel = .steve,
+    rotationDuration: TimeInterval = 15.0,
+    backgroundColor: NSColor = .gray,
+    debugMode: Bool = false
+  ) {
     self.texturePath = texturePath
     self.skinImage = nil
     self.capeTexturePath = capeTexturePath
@@ -56,7 +63,14 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
   ///   - debugMode: Whether to show control buttons (default: false)
-  public init(skinImage: NSImage, capeImage: NSImage? = nil, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray, debugMode: Bool = false) {
+  public init(
+    skinImage: NSImage,
+    capeImage: NSImage? = nil,
+    playerModel: PlayerModel = .steve,
+    rotationDuration: TimeInterval = 15.0,
+    backgroundColor: NSColor = .gray,
+    debugMode: Bool = false
+  ) {
     self.texturePath = nil
     self.skinImage = skinImage
     self.capeTexturePath = nil
@@ -75,7 +89,14 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
   ///   - debugMode: Whether to show control buttons (default: false)
-  public init(texturePath: String? = nil, capeImage: NSImage, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray, debugMode: Bool = false) {
+  public init(
+    texturePath: String? = nil,
+    capeImage: NSImage,
+    playerModel: PlayerModel = .steve,
+    rotationDuration: TimeInterval = 15.0,
+    backgroundColor: NSColor = .gray,
+    debugMode: Bool = false
+  ) {
     self.texturePath = texturePath
     self.skinImage = nil
     self.capeTexturePath = nil
@@ -89,7 +110,9 @@ public struct SceneKitCharacterViewRepresentable: NSViewControllerRepresentable 
   /// Create the underlying NSViewController for character rendering
   /// - Parameter context: SwiftUI representable context
   /// - Returns: Configured SceneKitCharacterViewController instance
-  public func makeNSViewController(context: Context) -> SceneKitCharacterViewController {
+  public func makeNSViewController(
+    context: Context
+  ) -> SceneKitCharacterViewController {
     if let skinImage = skinImage {
       return SceneKitCharacterViewController(
         skinImage: skinImage,
@@ -202,7 +225,15 @@ public struct SkinRenderView: View {
   ///   - playerModel: Player model type (Steve/Alex)
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
-  public init(texturePath: String? = nil, capeTexturePath: String? = nil, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray, onSkinDropped: ((NSImage) -> Void)? = nil, onCapeDropped: ((NSImage) -> Void)? = nil) {
+  public init(
+    texturePath: String? = nil,
+    capeTexturePath: String? = nil,
+    playerModel: PlayerModel = .steve,
+    rotationDuration: TimeInterval = 15.0,
+    backgroundColor: NSColor = .gray,
+    onSkinDropped: ((NSImage) -> Void)? = nil,
+    onCapeDropped: ((NSImage) -> Void)? = nil
+  ) {
     self._texturePath = State(initialValue: texturePath)
     self._skinImage = State(initialValue: nil)
     self._capeTexturePath = State(initialValue: capeTexturePath)
@@ -221,7 +252,15 @@ public struct SkinRenderView: View {
   ///   - playerModel: Player model type (Steve/Alex)
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
-  public init(skinImage: NSImage, capeImage: NSImage? = nil, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray, onSkinDropped: ((NSImage) -> Void)? = nil, onCapeDropped: ((NSImage) -> Void)? = nil) {
+  public init(
+    skinImage: NSImage,
+    capeImage: NSImage? = nil,
+    playerModel: PlayerModel = .steve,
+    rotationDuration: TimeInterval = 15.0,
+    backgroundColor: NSColor = .gray,
+    onSkinDropped: ((NSImage) -> Void)? = nil,
+    onCapeDropped: ((NSImage) -> Void)? = nil
+  ) {
     self._texturePath = State(initialValue: nil)
     self._skinImage = State(initialValue: skinImage)
     self._capeTexturePath = State(initialValue: nil)
@@ -240,7 +279,15 @@ public struct SkinRenderView: View {
   ///   - playerModel: Player model type (Steve/Alex)
   ///   - rotationDuration: Duration for one full rotation in seconds (0 = no rotation)
   ///   - backgroundColor: Background color for the 3D scene
-  public init(texturePath: String? = nil, capeImage: NSImage, playerModel: PlayerModel = .steve, rotationDuration: TimeInterval = 15.0, backgroundColor: NSColor = .gray, onSkinDropped: ((NSImage) -> Void)? = nil, onCapeDropped: ((NSImage) -> Void)? = nil) {
+  public init(
+    texturePath: String? = nil,
+    capeImage: NSImage,
+    playerModel: PlayerModel = .steve,
+    rotationDuration: TimeInterval = 15.0,
+    backgroundColor: NSColor = .gray,
+    onSkinDropped: ((NSImage) -> Void)? = nil,
+    onCapeDropped: ((NSImage) -> Void)? = nil
+  ) {
     self._texturePath = State(initialValue: texturePath)
     self._skinImage = State(initialValue: nil)
     self._capeTexturePath = State(initialValue: nil)
